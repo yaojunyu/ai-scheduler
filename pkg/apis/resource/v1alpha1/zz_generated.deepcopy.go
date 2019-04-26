@@ -96,8 +96,8 @@ func (in *PoolSpec) DeepCopyInto(out *PoolSpec) {
 		*out = new(v1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.SupportResourceNames != nil {
-		in, out := &in.SupportResourceNames, &out.SupportResourceNames
+	if in.MatchResources != nil {
+		in, out := &in.MatchResources, &out.MatchResources
 		*out = make([]corev1.ResourceName, len(*in))
 		copy(*out, *in)
 	}

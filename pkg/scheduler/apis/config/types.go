@@ -25,8 +25,8 @@ const (
 	// SchedulerDefaultLockObjectNamespace defines default scheduler lock object namespace ("kube-system")
 	SchedulerDefaultLockObjectNamespace string = metav1.NamespaceSystem
 
-	// SchedulerDefaultLockObjectName defines default scheduler lock object name ("kube-scheduler")
-	SchedulerDefaultLockObjectName = "kube-scheduler"
+	// SchedulerDefaultLockObjectName defines default scheduler lock object name ("ai-scheduler")
+	SchedulerDefaultLockObjectName = "ai-scheduler"
 
 	// SchedulerPolicyConfigMapKey defines the key of the element in the
 	// scheduler's policy ConfigMap that contains scheduler's policy config.

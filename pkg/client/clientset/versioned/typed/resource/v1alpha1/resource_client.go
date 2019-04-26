@@ -30,7 +30,7 @@ type ResourceV1alpha1Interface interface {
 	PoolsGetter
 }
 
-// ResourceV1alpha1Client is used to interact with features provided by the resource group.
+// ResourceV1alpha1Client is used to interact with features provided by the resource.aibee.cn group.
 type ResourceV1alpha1Client struct {
 	restClient rest.Interface
 }

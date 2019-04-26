@@ -33,9 +33,9 @@ type FakePools struct {
 	Fake *FakeResourceV1alpha1
 }
 
-var poolsResource = schema.GroupVersionResource{Group: "resource", Version: "v1alpha1", Resource: "pools"}
+var poolsResource = schema.GroupVersionResource{Group: "resource.aibee.cn", Version: "v1alpha1", Resource: "pools"}
 
-var poolsKind = schema.GroupVersionKind{Group: "resource", Version: "v1alpha1", Kind: "Pool"}
+var poolsKind = schema.GroupVersionKind{Group: "resource.aibee.cn", Version: "v1alpha1", Kind: "Pool"}
 
 // Get takes name of the pool, and returns the corresponding pool object, and an error if there is any.
 func (c *FakePools) Get(name string, options v1.GetOptions) (result *v1alpha1.Pool, err error) {
