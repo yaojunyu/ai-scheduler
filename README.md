@@ -1,1 +1,1 @@
-# Ai-Scheduler
+# AI-Scheduler
