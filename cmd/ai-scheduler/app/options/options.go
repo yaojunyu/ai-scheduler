@@ -111,7 +111,7 @@ func NewOptions() (*Options, error) {
 
 	// Set the PairName but leave certificate directory blank to generate in-memory by default
 	o.SecureServing.ServerCert.CertDirectory = ""
-	o.SecureServing.ServerCert.PairName = "kube-scheduler"
+	o.SecureServing.ServerCert.PairName = "ai-scheduler"
 	o.SecureServing.BindPort = ports.KubeSchedulerPort
 
 	return o, nil

@@ -18,14 +18,13 @@ package main
 
 import (
 	"fmt"
-	"gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/spf13/pflag"
 
-	//"gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app"
+	"gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	_ "k8s.io/kubernetes/pkg/util/prometheusclientgo" // load all the prometheus client-go plugins
