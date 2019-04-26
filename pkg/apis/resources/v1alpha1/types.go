@@ -10,23 +10,23 @@ import (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ResourcePool
-type ResourcePool struct {
+// Pool
+type Pool struct {
 	metav1.TypeMeta
 	// +optional
 	metav1.ObjectMeta
 
 	// Spec defines the desired resources divided
 	// +optional
-	Spec ResourcePoolSpec
+	Spec PoolSpec
 
 	// Status defines the actual enforced deserved resources and its current usage
 	// +optional
-	Status ResourcePoolStatus
+	Status PoolStatus
 }
 
-// ResourcePoolSpec
-type ResourcePoolSpec struct{
+// PoolSpec
+type PoolSpec struct{
 	// Selector defines the label selector to collect all nodes matched label
 	// +optional
 	NodeSelector *metav1.LabelSelector
@@ -67,29 +67,29 @@ type ResourcePoolSpec struct{
 	DisableSharing bool
 }
 
-// ResourcePoolStatus
-type ResourcePoolStatus struct {
+// PoolStatus
+type PoolStatus struct {
 	// Deserved all quota of pool divided
 	// +optional
 	Deserved v1.ResourceList
 
-	// Used  is the current observed total usage of the resource in the ResourcePool
+	// Used  is the current observed total usage of the resource in the Pool
 	// +optional
 	Used v1.ResourceList
 
-	// Borrowed is the resources that task in self ResourcePool borrows from other ResourcePool
+	// Borrowed is the resources that task in self Pool borrows from other Pool
 	Borrowed v1.ResourceList
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ResourcePool is a collection of resource pools.
-type ResourcePoolList struct {
+// Pool is a collection of resource pools.
+type PoolList struct {
 	metav1.TypeMeta
 	// Standard list metadata
 	// +optional
 	metav1.ListMeta
 
-	// items is the list of ResourcePool
-	Items []ResourcePool
+	// items is the list of Pool
+	Items []Pool
 }
