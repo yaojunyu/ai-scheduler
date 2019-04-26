@@ -21,7 +21,7 @@ package v1alpha1
 import (
 	"time"
 
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resources/v1alpha1"
+	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	scheme "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -55,7 +55,7 @@ type pools struct {
 }
 
 // newPools returns a Pools
-func newPools(c *ResourcesV1alpha1Client) *pools {
+func newPools(c *ResourceV1alpha1Client) *pools {
 	return &pools{
 		client: c.RESTClient(),
 	}

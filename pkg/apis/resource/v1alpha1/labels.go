@@ -18,4 +18,4 @@ package v1alpha1
 
 // GroupNameAnnotationKey is the annotation key of Pod to identify
 // which ResourcePool it belongs to.
-const GroupNameAnnotationKey = "resources.aibee.cn/pool"
+const GroupNameAnnotationKey = "resource.aibee.cn/pool"

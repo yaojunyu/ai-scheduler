@@ -19,28 +19,28 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resources/v1alpha1"
+	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
-type ResourcesV1alpha1Interface interface {
+type ResourceV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	PoolsGetter
 }
 
-// ResourcesV1alpha1Client is used to interact with features provided by the resources group.
-type ResourcesV1alpha1Client struct {
+// ResourceV1alpha1Client is used to interact with features provided by the resource group.
+type ResourceV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ResourcesV1alpha1Client) Pools() PoolInterface {
+func (c *ResourceV1alpha1Client) Pools() PoolInterface {
 	return newPools(c)
 }
 
-// NewForConfig creates a new ResourcesV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*ResourcesV1alpha1Client, error) {
+// NewForConfig creates a new ResourceV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*ResourceV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -49,12 +49,12 @@ func NewForConfig(c *rest.Config) (*ResourcesV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ResourcesV1alpha1Client{client}, nil
+	return &ResourceV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new ResourcesV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new ResourceV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *ResourcesV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *ResourceV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -62,9 +62,9 @@ func NewForConfigOrDie(c *rest.Config) *ResourcesV1alpha1Client {
 	return client
 }
 
-// New creates a new ResourcesV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *ResourcesV1alpha1Client {
-	return &ResourcesV1alpha1Client{c}
+// New creates a new ResourceV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *ResourceV1alpha1Client {
+	return &ResourceV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -82,7 +82,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *ResourcesV1alpha1Client) RESTClient() rest.Interface {
+func (c *ResourceV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

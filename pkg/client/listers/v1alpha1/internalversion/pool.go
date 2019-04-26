@@ -19,7 +19,7 @@ limitations under the License.
 package internalversion
 
 import (
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resources/v1alpha1"
+	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"

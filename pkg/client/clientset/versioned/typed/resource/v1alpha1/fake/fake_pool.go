@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resources/v1alpha1"
+	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,12 +30,12 @@ import (
 
 // FakePools implements PoolInterface
 type FakePools struct {
-	Fake *FakeResourcesV1alpha1
+	Fake *FakeResourceV1alpha1
 }
 
-var poolsResource = schema.GroupVersionResource{Group: "resources", Version: "v1alpha1", Resource: "pools"}
+var poolsResource = schema.GroupVersionResource{Group: "resource", Version: "v1alpha1", Resource: "pools"}
 
-var poolsKind = schema.GroupVersionKind{Group: "resources", Version: "v1alpha1", Kind: "Pool"}
+var poolsKind = schema.GroupVersionKind{Group: "resource", Version: "v1alpha1", Kind: "Pool"}
 
 // Get takes name of the pool, and returns the corresponding pool object, and an error if there is any.
 func (c *FakePools) Get(name string, options v1.GetOptions) (result *v1alpha1.Pool, err error) {

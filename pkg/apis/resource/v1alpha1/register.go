@@ -29,7 +29,7 @@ var (
 
 const (
 	// GroupName is the group name used in this package.
-	GroupName = "resources.aibee.cn"
+	GroupName = "resource.aibee.cn"
 
 	// GroupVersion is the version of scheduling group
 	GroupVersion = "v1alpha1"
@@ -46,8 +46,8 @@ func Resource(resource string) schema.GroupResource {
 // addKnownTypes adds the set of types defined in this package to the supplied scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&ResourcePool{},
-		&ResourcePoolList{},
+		&Pool{},
+		&PoolList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

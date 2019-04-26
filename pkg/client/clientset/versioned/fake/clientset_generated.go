@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
-	resourcesv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resources/v1alpha1"
-	fakeresourcesv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resources/v1alpha1/fake"
+	resourcev1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1"
+	fakeresourcev1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -71,7 +71,7 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// ResourcesV1alpha1 retrieves the ResourcesV1alpha1Client
-func (c *Clientset) ResourcesV1alpha1() resourcesv1alpha1.ResourcesV1alpha1Interface {
-	return &fakeresourcesv1alpha1.FakeResourcesV1alpha1{Fake: &c.Fake}
+// ResourceV1alpha1 retrieves the ResourceV1alpha1Client
+func (c *Clientset) ResourceV1alpha1() resourcev1alpha1.ResourceV1alpha1Interface {
+	return &fakeresourcev1alpha1.FakeResourceV1alpha1{Fake: &c.Fake}
 }

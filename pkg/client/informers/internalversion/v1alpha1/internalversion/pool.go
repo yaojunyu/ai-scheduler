@@ -21,7 +21,7 @@ package internalversion
 import (
 	time "time"
 
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resources/v1alpha1"
+	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	internalinterfaces "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/internalversion/internalinterfaces"
 	internalversion "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/listers/v1alpha1/internalversion"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

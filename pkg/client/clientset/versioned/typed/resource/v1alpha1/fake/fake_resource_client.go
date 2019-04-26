@@ -19,22 +19,22 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resources/v1alpha1"
+	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeResourcesV1alpha1 struct {
+type FakeResourceV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeResourcesV1alpha1) Pools() v1alpha1.PoolInterface {
+func (c *FakeResourceV1alpha1) Pools() v1alpha1.PoolInterface {
 	return &FakePools{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeResourcesV1alpha1) RESTClient() rest.Interface {
+func (c *FakeResourceV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

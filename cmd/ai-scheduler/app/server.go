@@ -67,7 +67,7 @@ func NewSchedulerCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:  "ai-scheduler",
-		Long: `The ai-scheduler is a ai scheduler for kubernetes, aiming at resource sharing, batch scheduling for AI Platform.`,
+		Long: `The ai-scheduler is a ai scheduler for kubernetes, aiming at resource sharing, batch scheduling for AI`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runCommand(cmd, args, opts); err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
