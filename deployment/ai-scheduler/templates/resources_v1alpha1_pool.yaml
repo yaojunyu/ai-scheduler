@@ -5,7 +5,7 @@ metadata:
   annotations:
     "helm.sh/hook": "crd-install"
 spec:
-  group: resources.aibee.cn
+  group: resource.aibee.cn
   versions:
     - name: v1alpha1
       served: true
@@ -33,12 +33,12 @@ spec:
               type: integer
             disablePreemption:
               format: bool
-              type: bool
+              type: boolean
             disableBorrowing:
               format: bool
-              type: bool
+              type: boolean
             disableSharing:
               format: bool
-              type: bool
+              type: boolean
           type: object
       type: object
