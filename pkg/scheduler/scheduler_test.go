@@ -33,7 +33,7 @@ import (
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	fakecache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache/fake"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/nodeinfo"
+	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

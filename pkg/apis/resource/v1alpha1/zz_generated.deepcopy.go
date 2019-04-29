@@ -145,8 +145,8 @@ func (in *PoolStatus) DeepCopyInto(out *PoolStatus) {
 			(*out)[key] = val.DeepCopy()
 		}
 	}
-	if in.Borrowed != nil {
-		in, out := &in.Borrowed, &out.Borrowed
+	if in.Shared != nil {
+		in, out := &in.Shared, &out.Shared
 		*out = make(corev1.ResourceList, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val.DeepCopy()

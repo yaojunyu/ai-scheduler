@@ -18,12 +18,11 @@ package cache
 
 import (
 	"fmt"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"sync"
 	"time"
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/nodeinfo"
+	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -78,7 +77,7 @@ type schedulerCache struct {
 	imageStates map[string]*imageState
 
 	// resource pools
-	pools map[string]*info.PoolInfo
+	pools map[string]*schedulernodeinfo.PoolInfo
 	//
 
 }

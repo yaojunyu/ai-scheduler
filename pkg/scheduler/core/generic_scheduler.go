@@ -35,7 +35,7 @@ import (
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/nodeinfo"
+	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	pluginsv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/plugins/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"

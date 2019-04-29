@@ -78,7 +78,7 @@ type PoolStatus struct {
 	Used v1.ResourceList `json:"used,omitempty"`
 
 	// Borrowed is the resources that task in self Pool borrows from other Pool
-	Borrowed v1.ResourceList `json:"borrowed,omitempty"`
+	Shared v1.ResourceList `json:"borrowed,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

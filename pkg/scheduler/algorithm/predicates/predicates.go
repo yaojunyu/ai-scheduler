@@ -28,7 +28,7 @@ import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/nodeinfo"
+	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
 	"k8s.io/api/core/v1"
