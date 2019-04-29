@@ -19,7 +19,9 @@ package scheduler
 import (
 	"errors"
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/framework"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"os"
 	"time"
 
@@ -36,7 +38,6 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	policyinformers "k8s.io/client-go/informers/policy/v1beta1"
@@ -250,7 +251,8 @@ func (sched *Scheduler) Run() {
 		return
 	}
 
-	go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
+	//go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
+	go wait.Until(sched.scheduleBatchOnce, 1, sched.config.StopEverything)
 }
 
 // Config returns scheduler's config pointer. It is exposed for testing purposes.
@@ -573,4 +575,16 @@ func (sched *Scheduler) scheduleOne() {
 			metrics.PodScheduleSuccesses.Inc()
 		}
 	}()
+}
+
+func (sched *Scheduler) scheduleBatchOnce() {
+	klog.V(4).Infof("Start ai scheduling...")
+	defer klog.V(4).Infof("End ai scheduling...")
+
+	ssn := framework.OpenSession(sched.Cache())
+	defer framework.CloseSession(ssn)
+
+	for _, action := range framework.Actions() {
+		action.Execute()
+	}
 }
