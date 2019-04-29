@@ -18,6 +18,7 @@ package cache
 
 import (
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"sync"
 	"time"
 
@@ -75,6 +76,11 @@ type schedulerCache struct {
 	nodeTree *NodeTree
 	// A map from image name to its imageState.
 	imageStates map[string]*imageState
+
+	// resource pools
+	pools map[string]*info.PoolInfo
+	//
+
 }
 
 type podState struct {

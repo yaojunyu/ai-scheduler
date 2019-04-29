@@ -26,7 +26,7 @@ const (
 	SchedulerDefaultLockObjectNamespace string = metav1.NamespaceSystem
 
 	// SchedulerDefaultLockObjectName defines default scheduler lock object name ("kube-scheduler")
-	SchedulerDefaultLockObjectName = "kube-scheduler"
+	SchedulerDefaultLockObjectName = "ai-scheduler"
 
 	// SchedulerDefaultProviderName defines the default provider names
 	SchedulerDefaultProviderName = "DefaultProvider"
