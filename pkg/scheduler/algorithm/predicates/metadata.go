@@ -25,7 +25,7 @@ import (
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,12 +37,12 @@ import (
 // PredicateMetadata interface represents anything that can access a predicate metadata.
 type PredicateMetadata interface {
 	ShallowCopy() PredicateMetadata
-	AddPod(addedPod *v1.Pod, nodeInfo *schedulernodeinfo.NodeInfo) error
+	AddPod(addedPod *v1.Pod, nodeInfo *schedulerinfo.NodeInfo) error
 	RemovePod(deletedPod *v1.Pod) error
 }
 
 // PredicateMetadataProducer is a function that computes predicate metadata for a given pod.
-type PredicateMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) PredicateMetadata
+type PredicateMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo) PredicateMetadata
 
 // PredicateMetadataFactory defines a factory of predicate metadata.
 type PredicateMetadataFactory struct {
@@ -78,7 +78,7 @@ type topologyPairsMaps struct {
 type predicateMetadata struct {
 	pod           *v1.Pod
 	podBestEffort bool
-	podRequest    *schedulernodeinfo.Resource
+	podRequest    *schedulerinfo.Resource
 	podPorts      []*v1.ContainerPort
 
 	topologyPairsAntiAffinityPodsMap *topologyPairsMaps
@@ -118,7 +118,7 @@ func RegisterPredicateMetadataProducer(predicateName string, precomp predicateMe
 }
 
 // EmptyPredicateMetadataProducer returns a no-op MetadataProducer type.
-func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) PredicateMetadata {
+func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo) PredicateMetadata {
 	return nil
 }
 
@@ -142,7 +142,7 @@ func NewPredicateMetadataFactory(podLister algorithm.PodLister) PredicateMetadat
 }
 
 // GetMetadata returns the predicateMetadata used which will be used by various predicates.
-func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulernodeinfo.NodeInfo) PredicateMetadata {
+func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfoMap map[string]*schedulerinfo.NodeInfo) PredicateMetadata {
 	// If we cannot compute metadata, just return nil
 	if pod == nil {
 		return nil
@@ -246,7 +246,7 @@ func (meta *predicateMetadata) RemovePod(deletedPod *v1.Pod) error {
 
 // AddPod changes predicateMetadata assuming that `newPod` is added to the
 // system.
-func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulernodeinfo.NodeInfo) error {
+func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulerinfo.NodeInfo) error {
 	addedPodFullName := schedutil.GetPodFullName(addedPod)
 	if addedPodFullName == schedutil.GetPodFullName(meta.pod) {
 		return fmt.Errorf("addedPod and meta.pod must not be the same")
@@ -375,7 +375,7 @@ func podMatchesAnyAffinityTermProperties(pod *v1.Pod, properties []*affinityTerm
 // getTPMapMatchingExistingAntiAffinity calculates the following for each existing pod on each node:
 // (1) Whether it has PodAntiAffinity
 // (2) Whether any AffinityTerm matches the incoming pod
-func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*schedulernodeinfo.NodeInfo) (*topologyPairsMaps, error) {
+func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*schedulerinfo.NodeInfo) (*topologyPairsMaps, error) {
 	allNodeNames := make([]string, 0, len(nodeInfoMap))
 	for name := range nodeInfoMap {
 		allNodeNames = append(allNodeNames, name)
@@ -423,7 +423,7 @@ func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*s
 // It returns a topologyPairsMaps that are checked later by the affinity
 // predicate. With this topologyPairsMaps available, the affinity predicate does not
 // need to check all the pods in the cluster.
-func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*schedulernodeinfo.NodeInfo) (topologyPairsAffinityPodsMaps *topologyPairsMaps, topologyPairsAntiAffinityPodsMaps *topologyPairsMaps, err error) {
+func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*schedulerinfo.NodeInfo) (topologyPairsAffinityPodsMaps *topologyPairsMaps, topologyPairsAntiAffinityPodsMaps *topologyPairsMaps, err error) {
 	affinity := pod.Spec.Affinity
 	if affinity == nil || (affinity.PodAffinity == nil && affinity.PodAntiAffinity == nil) {
 		return newTopologyPairsMaps(), newTopologyPairsMaps(), nil

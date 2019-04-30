@@ -17,7 +17,7 @@ limitations under the License.
 package predicates
 
 import (
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -68,7 +68,7 @@ func CreateSelectorFromLabels(aL map[string]string) labels.Selector {
 
 // portsConflict check whether existingPorts and wantPorts conflict with each other
 // return true if we have a conflict
-func portsConflict(existingPorts schedulernodeinfo.HostPortInfo, wantPorts []*v1.ContainerPort) bool {
+func portsConflict(existingPorts schedulerinfo.HostPortInfo, wantPorts []*v1.ContainerPort) bool {
 	for _, cp := range wantPorts {
 		if existingPorts.CheckConflict(cp.HostIP, string(cp.Protocol), cp.HostPort) {
 			return true

@@ -18,11 +18,12 @@ package cache
 
 import (
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"sync"
 	"time"
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -51,7 +52,7 @@ func New(ttl time.Duration, stop <-chan struct{}) Cache {
 // linked list. When a NodeInfo is updated, it goes to the head of the list.
 // The items closer to the head are the most recently updated items.
 type nodeInfoListItem struct {
-	info *schedulernodeinfo.NodeInfo
+	info *schedulerinfo.NodeInfo
 	next *nodeInfoListItem
 	prev *nodeInfoListItem
 }
@@ -77,7 +78,7 @@ type schedulerCache struct {
 	imageStates map[string]*imageState
 
 	// resource pools
-	pools map[string]*schedulernodeinfo.PoolInfo
+	pools map[string]*schedulerinfo.PoolInfo
 	//
 
 }
@@ -98,8 +99,8 @@ type imageState struct {
 }
 
 // createImageStateSummary returns a summarizing snapshot of the given image's state.
-func (cache *schedulerCache) createImageStateSummary(state *imageState) *schedulernodeinfo.ImageStateSummary {
-	return &schedulernodeinfo.ImageStateSummary{
+func (cache *schedulerCache) createImageStateSummary(state *imageState) *schedulerinfo.ImageStateSummary {
+	return &schedulerinfo.ImageStateSummary{
 		Size:     state.size,
 		NumNodes: len(state.nodes),
 	}
@@ -116,11 +117,13 @@ func newSchedulerCache(ttl, period time.Duration, stop <-chan struct{}) *schedul
 		assumedPods: make(map[string]bool),
 		podStates:   make(map[string]*podState),
 		imageStates: make(map[string]*imageState),
+
+		pools:		 make(map[string]*schedulerinfo.PoolInfo),
 	}
 }
 
 // newNodeInfoListItem initializes a new nodeInfoListItem.
-func newNodeInfoListItem(ni *schedulernodeinfo.NodeInfo) *nodeInfoListItem {
+func newNodeInfoListItem(ni *schedulerinfo.NodeInfo) *nodeInfoListItem {
 	return &nodeInfoListItem{
 		info: ni,
 	}
@@ -129,7 +132,7 @@ func newNodeInfoListItem(ni *schedulernodeinfo.NodeInfo) *nodeInfoListItem {
 // NewNodeInfoSnapshot initializes a NodeInfoSnapshot struct and returns it.
 func NewNodeInfoSnapshot() NodeInfoSnapshot {
 	return NodeInfoSnapshot{
-		NodeInfoMap: make(map[string]*schedulernodeinfo.NodeInfo),
+		NodeInfoMap: make(map[string]*schedulerinfo.NodeInfo),
 	}
 }
 
@@ -192,7 +195,7 @@ func (cache *schedulerCache) Snapshot() *Snapshot {
 	cache.mu.RLock()
 	defer cache.mu.RUnlock()
 
-	nodes := make(map[string]*schedulernodeinfo.NodeInfo, len(cache.nodes))
+	nodes := make(map[string]*schedulerinfo.NodeInfo, len(cache.nodes))
 	for k, v := range cache.nodes {
 		nodes[k] = v.info.Clone()
 	}
@@ -277,7 +280,7 @@ func (cache *schedulerCache) FilteredList(podFilter algorithm.PodFilter, selecto
 }
 
 func (cache *schedulerCache) AssumePod(pod *v1.Pod) error {
-	key, err := schedulernodeinfo.GetPodKey(pod)
+	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
 		return err
 	}
@@ -303,7 +306,7 @@ func (cache *schedulerCache) FinishBinding(pod *v1.Pod) error {
 
 // finishBinding exists to make tests determinitistic by injecting now as an argument
 func (cache *schedulerCache) finishBinding(pod *v1.Pod, now time.Time) error {
-	key, err := schedulernodeinfo.GetPodKey(pod)
+	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
 		return err
 	}
@@ -322,7 +325,7 @@ func (cache *schedulerCache) finishBinding(pod *v1.Pod, now time.Time) error {
 }
 
 func (cache *schedulerCache) ForgetPod(pod *v1.Pod) error {
-	key, err := schedulernodeinfo.GetPodKey(pod)
+	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
 		return err
 	}
@@ -354,7 +357,7 @@ func (cache *schedulerCache) ForgetPod(pod *v1.Pod) error {
 func (cache *schedulerCache) addPod(pod *v1.Pod) {
 	n, ok := cache.nodes[pod.Spec.NodeName]
 	if !ok {
-		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
+		n = newNodeInfoListItem(schedulerinfo.NewNodeInfo())
 		cache.nodes[pod.Spec.NodeName] = n
 	}
 	n.info.AddPod(pod)
@@ -388,7 +391,7 @@ func (cache *schedulerCache) removePod(pod *v1.Pod) error {
 }
 
 func (cache *schedulerCache) AddPod(pod *v1.Pod) error {
-	key, err := schedulernodeinfo.GetPodKey(pod)
+	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
 		return err
 	}
@@ -423,7 +426,7 @@ func (cache *schedulerCache) AddPod(pod *v1.Pod) error {
 }
 
 func (cache *schedulerCache) UpdatePod(oldPod, newPod *v1.Pod) error {
-	key, err := schedulernodeinfo.GetPodKey(oldPod)
+	key, err := schedulerinfo.GetPodKey(oldPod)
 	if err != nil {
 		return err
 	}
@@ -451,7 +454,7 @@ func (cache *schedulerCache) UpdatePod(oldPod, newPod *v1.Pod) error {
 }
 
 func (cache *schedulerCache) RemovePod(pod *v1.Pod) error {
-	key, err := schedulernodeinfo.GetPodKey(pod)
+	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
 		return err
 	}
@@ -480,7 +483,7 @@ func (cache *schedulerCache) RemovePod(pod *v1.Pod) error {
 }
 
 func (cache *schedulerCache) IsAssumedPod(pod *v1.Pod) (bool, error) {
-	key, err := schedulernodeinfo.GetPodKey(pod)
+	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
 		return false, err
 	}
@@ -496,7 +499,7 @@ func (cache *schedulerCache) IsAssumedPod(pod *v1.Pod) (bool, error) {
 }
 
 func (cache *schedulerCache) GetPod(pod *v1.Pod) (*v1.Pod, error) {
-	key, err := schedulernodeinfo.GetPodKey(pod)
+	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
 		return nil, err
 	}
@@ -512,13 +515,59 @@ func (cache *schedulerCache) GetPod(pod *v1.Pod) (*v1.Pod, error) {
 	return podState.pod, nil
 }
 
+func (cache *schedulerCache) AddPool(pool *v1alpha1.Pool) error {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
+	p, ok := cache.pools[pool.Name]
+	if !ok {
+		p = schedulerinfo.NewPoolInfo()
+		cache.pools[pool.Name] = p
+
+		// update pool status
+
+	}
+
+	return p.SetPool(pool)
+}
+
+func (cache *schedulerCache) UpdatePool(oldPool, newPool *v1alpha1.Pool) error {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
+	p, ok := cache.pools[newPool.Name]
+	if !ok {
+		p = schedulerinfo.NewPoolInfo()
+		cache.pools[newPool.Name] = p
+	} else {
+		cache.RemovePool(oldPool)
+	}
+
+	return cache.AddPool(newPool)
+}
+
+func (cache *schedulerCache) RemovePool(pool *v1alpha1.Pool) error {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
+	p, ok := cache.pools[pool.Name]
+	if !ok {
+		return fmt.Errorf("pool %v is not found", pool.Name)
+	}
+	if err := p.RemovePool(pool); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (cache *schedulerCache) AddNode(node *v1.Node) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
 	n, ok := cache.nodes[node.Name]
 	if !ok {
-		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
+		n = newNodeInfoListItem(schedulerinfo.NewNodeInfo())
 		cache.nodes[node.Name] = n
 	} else {
 		cache.removeNodeImageStates(n.info.Node())
@@ -536,7 +585,7 @@ func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
 
 	n, ok := cache.nodes[newNode.Name]
 	if !ok {
-		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
+		n = newNodeInfoListItem(schedulerinfo.NewNodeInfo())
 		cache.nodes[newNode.Name] = n
 	} else {
 		cache.removeNodeImageStates(n.info.Node())
@@ -576,8 +625,8 @@ func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
 
 // addNodeImageStates adds states of the images on given node to the given nodeInfo and update the imageStates in
 // scheduler cache. This function assumes the lock to scheduler cache has been acquired.
-func (cache *schedulerCache) addNodeImageStates(node *v1.Node, nodeInfo *schedulernodeinfo.NodeInfo) {
-	newSum := make(map[string]*schedulernodeinfo.ImageStateSummary)
+func (cache *schedulerCache) addNodeImageStates(node *v1.Node, nodeInfo *schedulerinfo.NodeInfo) {
+	newSum := make(map[string]*schedulerinfo.ImageStateSummary)
 
 	for _, image := range node.Status.Images {
 		for _, name := range image.Names {

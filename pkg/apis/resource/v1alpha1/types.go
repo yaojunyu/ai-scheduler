@@ -27,17 +27,16 @@ type Pool struct {
 
 // PoolSpec
 type PoolSpec struct{
-	// Selector defines the label selector to collect all nodes matched label
+	// NodeSelector match node label
 	// +optional
 	NodeSelector *metav1.LabelSelector `json:"nodeSelector,omitempty"`
-
-	// MatchResources defines supported resource types of node
+	// supportResources match nodes have supported resources
 	// +optional
-	MatchResources []v1.ResourceName `json:"matchResources,omitempty"`
+	SupportResources []v1.ResourceName `json:"supportResources,omitempty"`
 
-	// Weight defines the weight of pool size
+	// Weight defines the weight of resources size in pool
 	// +optional
-	Weight int32 `json:"weight,omitempty"`
+	Weight map[v1.ResourceName]int32 `json:"weight,omitempty"`
 
 	// Quota defines the quota of pool divide by weight/labels/manual
 	// +optional

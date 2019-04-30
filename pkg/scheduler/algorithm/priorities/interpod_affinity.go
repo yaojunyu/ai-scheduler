@@ -24,7 +24,7 @@ import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,7 +116,7 @@ func (p *podAffinityPriorityMap) processTerms(terms []v1.WeightedPodAffinityTerm
 // that node; the node(s) with the highest sum are the most preferred.
 // Symmetry need to be considered for preferredDuringSchedulingIgnoredDuringExecution from podAffinity & podAntiAffinity,
 // symmetry need to be considered for hard requirements from podAffinity
-func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
+func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
 	affinity := pod.Spec.Affinity
 	hasAffinityConstraints := affinity != nil && affinity.PodAffinity != nil
 	hasAntiAffinityConstraints := affinity != nil && affinity.PodAntiAffinity != nil

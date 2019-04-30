@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 
 	"k8s.io/klog"
@@ -33,7 +33,7 @@ import (
 // of the pod are satisfied, the node is assigned a score of 1.
 // Rationale of choosing the lowest score of 1 is that this is mainly selected to break ties between nodes that have
 // same scores assigned by one of least and most requested priority functions.
-func ResourceLimitsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error) {
+func ResourceLimitsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")
@@ -82,10 +82,10 @@ func computeScore(limit, allocatable int64) int64 {
 // getResourceLimits computes resource limits for input pod.
 // The reason to create this new function is to be consistent with other
 // priority functions because most or perhaps all priority functions work
-// with schedulernodeinfo.Resource.
+// with schedulerinfo.Resource.
 // TODO: cache it as part of metadata passed to priority functions.
-func getResourceLimits(pod *v1.Pod) *schedulernodeinfo.Resource {
-	result := &schedulernodeinfo.Resource{}
+func getResourceLimits(pod *v1.Pod) *schedulerinfo.Resource {
+	result := &schedulerinfo.Resource{}
 	for _, container := range pod.Spec.Containers {
 		result.Add(container.Resources.Limits)
 	}

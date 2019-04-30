@@ -18,9 +18,11 @@ package scheduler
 
 import (
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"k8s.io/klog"
 	"reflect"
 
+	resourceinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -85,6 +87,64 @@ func (sched *Scheduler) onServiceUpdate(oldObj interface{}, newObj interface{}) 
 
 func (sched *Scheduler) onServiceDelete(obj interface{}) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+}
+
+func (sched *Scheduler) addPoolToCache(obj interface{}) {
+	pool, ok := obj.(*v1alpha1.Pool)
+	if !ok {
+		klog.Errorf("cannot convert to *v1alpha1.Pool: %v", obj)
+		return
+	}
+
+	if err := sched.config.SchedulerCache.AddPool(pool); err != nil {
+		klog.Errorf("scheduler cache AddPool failed: %v", err)
+	}
+
+
+}
+
+func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
+	oldPool, ok := oldObj.(*v1alpha1.Pool)
+	if !ok {
+		klog.Errorf("cannot convert oldObj to *v1alpha1.Pool: %v", oldObj)
+		return
+	}
+	newPool, ok := newObj.(*v1alpha1.Pool)
+	if !ok {
+		klog.Errorf("cannot convert newObj to *v1alpha1.Pool: %v", newObj)
+		return
+	}
+
+	if err := sched.config.SchedulerCache.UpdatePool(oldPool, newPool); err != nil {
+		klog.Errorf("scheduler cache UpdatePool failed: %v", err)
+	}
+}
+
+func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
+	var pool *v1alpha1.Pool
+	switch t := obj.(type) {
+	case *v1alpha1.Pool:
+		pool = t
+	case cache.DeletedFinalStateUnknown:
+		var ok bool
+		pool, ok = t.Obj.(*v1alpha1.Pool)
+		if !ok {
+			klog.Errorf("cannot convert to *v1alpha1.Pool: %v", t.Obj)
+			return
+		}
+	default:
+		klog.Errorf("cannot convert to *v1alpha1.Pool: %v", t)
+		return
+	}
+
+	// NOTE: Updates must be written to scheduler cache before invalidating
+	// equivalence cache, because we could snapshot equivalence cache after the
+	// invalidation and then snapshot the cache itself. If the cache is
+	// snapshotted before updates are written, we would update equivalence
+	// cache with stale information which is based on snapshot of old cache.
+	if err := sched.config.SchedulerCache.RemovePool(pool); err != nil {
+		klog.Errorf("scheduler cache RemovePool failed: %v", err)
+	}
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {
@@ -321,6 +381,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 func AddAllEventHandlers(
 	sched *Scheduler,
 	schedulerName string,
+	poolInformer resourceinformers.PoolInformer,
 	nodeInformer coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
@@ -380,6 +441,14 @@ func AddAllEventHandlers(
 				UpdateFunc: sched.updatePodInSchedulingQueue,
 				DeleteFunc: sched.deletePodFromSchedulingQueue,
 			},
+		},
+	)
+
+	poolInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: 	sched.addPoolToCache,
+			UpdateFunc: sched.updatePoolInCache,
+			DeleteFunc: sched.deletePoolFromCache,
 		},
 	)
 

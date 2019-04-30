@@ -17,6 +17,8 @@ limitations under the License.
 package config
 
 import (
+	asclientset "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
+	asinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions"
 	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
 	apiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/informers"
@@ -43,7 +45,9 @@ type Config struct {
 	SecureServing          *apiserver.SecureServingInfo
 
 	Client          clientset.Interface
+	ASClient        asclientset.Interface
 	InformerFactory informers.SharedInformerFactory
+	AsInformerFactory asinformers.SharedInformerFactory
 	PodInformer     coreinformers.PodInformer
 	EventClient     v1core.EventsGetter
 	Recorder        record.EventRecorder

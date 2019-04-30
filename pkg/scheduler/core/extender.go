@@ -26,7 +26,7 @@ import (
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -135,7 +135,7 @@ func (h *HTTPExtender) SupportsPreemption() bool {
 func (h *HTTPExtender) ProcessPreemption(
 	pod *v1.Pod,
 	nodeToVictims map[*v1.Node]*schedulerapi.Victims,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 ) (map[*v1.Node]*schedulerapi.Victims, error) {
 	var (
 		result schedulerapi.ExtenderPreemptionResult
@@ -179,7 +179,7 @@ func (h *HTTPExtender) ProcessPreemption(
 // such as UIDs and names, to object pointers.
 func (h *HTTPExtender) convertToNodeToVictims(
 	nodeNameToMetaVictims map[string]*schedulerapi.MetaVictims,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 ) (map[*v1.Node]*schedulerapi.Victims, error) {
 	nodeToVictims := map[*v1.Node]*schedulerapi.Victims{}
 	for nodeName, metaVictims := range nodeNameToMetaVictims {
@@ -205,8 +205,8 @@ func (h *HTTPExtender) convertToNodeToVictims(
 func (h *HTTPExtender) convertPodUIDToPod(
 	metaPod *schedulerapi.MetaPod,
 	nodeName string,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) (*v1.Pod, error) {
-	var nodeInfo *schedulernodeinfo.NodeInfo
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo) (*v1.Pod, error) {
+	var nodeInfo *schedulerinfo.NodeInfo
 	if nodeInfo, ok := nodeNameToInfo[nodeName]; ok {
 		for _, pod := range nodeInfo.Pods() {
 			if string(pod.UID) == metaPod.UID {
@@ -257,7 +257,7 @@ func convertToNodeNameToVictims(
 // the list of failed nodes and failure reasons.
 func (h *HTTPExtender) Filter(
 	pod *v1.Pod,
-	nodes []*v1.Node, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodes []*v1.Node, nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 ) ([]*v1.Node, schedulerapi.FailedNodesMap, error) {
 	var (
 		result     schedulerapi.ExtenderFilterResult

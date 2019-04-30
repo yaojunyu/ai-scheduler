@@ -35,7 +35,7 @@ import (
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	pluginsv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/plugins/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
@@ -532,8 +532,8 @@ func (g *genericScheduler) findNodesThatFit(pod *v1.Pod, nodes []*v1.Node) ([]*v
 // to run on the node given in nodeInfo to meta and nodeInfo. It returns 1) whether
 // any pod was found, 2) augmented meta data, 3) augmented nodeInfo.
 func addNominatedPods(pod *v1.Pod, meta predicates.PredicateMetadata,
-	nodeInfo *schedulernodeinfo.NodeInfo, queue internalqueue.SchedulingQueue) (bool, predicates.PredicateMetadata,
-	*schedulernodeinfo.NodeInfo) {
+	nodeInfo *schedulerinfo.NodeInfo, queue internalqueue.SchedulingQueue) (bool, predicates.PredicateMetadata,
+	*schedulerinfo.NodeInfo) {
 	if queue == nil || nodeInfo == nil || nodeInfo.Node() == nil {
 		// This may happen only in tests.
 		return false, meta, nodeInfo
@@ -571,7 +571,7 @@ func addNominatedPods(pod *v1.Pod, meta predicates.PredicateMetadata,
 func podFitsOnNode(
 	pod *v1.Pod,
 	meta predicates.PredicateMetadata,
-	info *schedulernodeinfo.NodeInfo,
+	info *schedulerinfo.NodeInfo,
 	predicateFuncs map[string]predicates.FitPredicate,
 	queue internalqueue.SchedulingQueue,
 	alwaysCheckAllPredicates bool,
@@ -644,7 +644,7 @@ func podFitsOnNode(
 // All scores are finally combined (added) to get the total weighted scores of all nodes
 func PrioritizeNodes(
 	pod *v1.Pod,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 	meta interface{},
 	priorityConfigs []priorities.PriorityConfig,
 	nodes []*v1.Node,
@@ -785,7 +785,7 @@ func PrioritizeNodes(
 }
 
 // EqualPriorityMap is a prioritizer function that gives an equal weight of one to all nodes
-func EqualPriorityMap(_ *v1.Pod, _ interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error) {
+func EqualPriorityMap(_ *v1.Pod, _ interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")
@@ -914,7 +914,7 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 // selectNodesForPreemption finds all the nodes with possible victims for
 // preemption in parallel.
 func selectNodesForPreemption(pod *v1.Pod,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 	potentialNodes []*v1.Node,
 	fitPredicates map[string]predicates.FitPredicate,
 	metadataProducer predicates.PredicateMetadataProducer,
@@ -1004,7 +1004,7 @@ func filterPodsWithPDBViolation(pods []interface{}, pdbs []*policy.PodDisruption
 func selectVictimsOnNode(
 	pod *v1.Pod,
 	meta predicates.PredicateMetadata,
-	nodeInfo *schedulernodeinfo.NodeInfo,
+	nodeInfo *schedulerinfo.NodeInfo,
 	fitPredicates map[string]predicates.FitPredicate,
 	queue internalqueue.SchedulingQueue,
 	pdbs []*policy.PodDisruptionBudget,
@@ -1128,7 +1128,7 @@ func nodesWherePreemptionMightHelp(nodes []*v1.Node, failedPredicatesMap FailedP
 // considered for preemption.
 // We look at the node that is nominated for this pod and as long as there are
 // terminating pods on the node, we don't consider this for preempting more pods.
-func podEligibleToPreemptOthers(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) bool {
+func podEligibleToPreemptOthers(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo) bool {
 	nomNodeName := pod.Status.NominatedNodeName
 	if len(nomNodeName) > 0 {
 		if nodeInfo, found := nodeNameToInfo[nomNodeName]; found {

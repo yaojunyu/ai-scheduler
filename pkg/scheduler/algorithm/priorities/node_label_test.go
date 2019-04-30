@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -108,7 +108,7 @@ func TestNewNodeLabelPriority(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(nil, test.nodes)
+			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(nil, test.nodes)
 			labelPrioritizer := &NodeLabelPrioritizer{
 				label:    test.label,
 				presence: test.presence,

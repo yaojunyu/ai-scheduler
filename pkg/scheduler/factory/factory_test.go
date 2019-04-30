@@ -29,7 +29,7 @@ import (
 	latestschedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/latest"
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -229,19 +229,19 @@ func TestCreateFromConfigWithEmptyPredicatesOrPriorities(t *testing.T) {
 	}
 }
 
-func PredicateOne(pod *v1.Pod, meta predicates.PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []predicates.PredicateFailureReason, error) {
+func PredicateOne(pod *v1.Pod, meta predicates.PredicateMetadata, nodeInfo *schedulerinfo.NodeInfo) (bool, []predicates.PredicateFailureReason, error) {
 	return true, nil, nil
 }
 
-func PredicateTwo(pod *v1.Pod, meta predicates.PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []predicates.PredicateFailureReason, error) {
+func PredicateTwo(pod *v1.Pod, meta predicates.PredicateMetadata, nodeInfo *schedulerinfo.NodeInfo) (bool, []predicates.PredicateFailureReason, error) {
 	return true, nil, nil
 }
 
-func PriorityOne(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
+func PriorityOne(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
 	return []schedulerapi.HostPriority{}, nil
 }
 
-func PriorityTwo(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
+func PriorityTwo(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
 	return []schedulerapi.HostPriority{}, nil
 }
 
@@ -463,7 +463,7 @@ func (f *fakeExtender) IsIgnorable() bool {
 func (f *fakeExtender) ProcessPreemption(
 	pod *v1.Pod,
 	nodeToVictims map[*v1.Node]*schedulerapi.Victims,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 ) (map[*v1.Node]*schedulerapi.Victims, error) {
 	return nil, nil
 }
@@ -475,7 +475,7 @@ func (f *fakeExtender) SupportsPreemption() bool {
 func (f *fakeExtender) Filter(
 	pod *v1.Pod,
 	nodes []*v1.Node,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 ) (filteredNodes []*v1.Node, failedNodesMap schedulerapi.FailedNodesMap, err error) {
 	return nil, nil, nil
 }

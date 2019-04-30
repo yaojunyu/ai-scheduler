@@ -19,7 +19,7 @@ package predicates
 import (
 	"fmt"
 
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog"
@@ -44,7 +44,7 @@ func NewCSIMaxVolumeLimitPredicate(
 }
 
 func (c *CSIMaxVolumeLimitChecker) attachableLimitPredicate(
-	pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
+	pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulerinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
 
 	// if feature gate is disable we return
 	if !utilfeature.DefaultFeatureGate.Enabled(features.AttachVolumeLimit) {

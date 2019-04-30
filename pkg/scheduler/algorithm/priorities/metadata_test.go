@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
@@ -30,11 +30,11 @@ import (
 )
 
 func TestPriorityMetadata(t *testing.T) {
-	nonZeroReqs := &schedulernodeinfo.Resource{}
+	nonZeroReqs := &schedulerinfo.Resource{}
 	nonZeroReqs.MilliCPU = priorityutil.DefaultMilliCPURequest
 	nonZeroReqs.Memory = priorityutil.DefaultMemoryRequest
 
-	specifiedReqs := &schedulernodeinfo.Resource{}
+	specifiedReqs := &schedulerinfo.Resource{}
 	specifiedReqs.MilliCPU = 200
 	specifiedReqs.Memory = 2000
 

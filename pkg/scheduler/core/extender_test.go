@@ -28,7 +28,7 @@ import (
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
@@ -98,7 +98,7 @@ func machine2PrioritizerExtender(pod *v1.Pod, nodes []*v1.Node) (*schedulerapi.H
 	return &result, nil
 }
 
-func machine2Prioritizer(_ *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
+func machine2Prioritizer(_ *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
 	result := []schedulerapi.HostPriority{}
 	for _, node := range nodes {
 		score := 1
@@ -120,7 +120,7 @@ type FakeExtender struct {
 	ignorable        bool
 
 	// Cached node information for fake extender
-	cachedNodeNameToInfo map[string]*schedulernodeinfo.NodeInfo
+	cachedNodeNameToInfo map[string]*schedulerinfo.NodeInfo
 }
 
 func (f *FakeExtender) Name() string {
@@ -139,7 +139,7 @@ func (f *FakeExtender) SupportsPreemption() bool {
 func (f *FakeExtender) ProcessPreemption(
 	pod *v1.Pod,
 	nodeToVictims map[*v1.Node]*schedulerapi.Victims,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 ) (map[*v1.Node]*schedulerapi.Victims, error) {
 	nodeToVictimsCopy := map[*v1.Node]*schedulerapi.Victims{}
 	// We don't want to change the original nodeToVictims
@@ -178,7 +178,7 @@ func (f *FakeExtender) ProcessPreemption(
 func (f *FakeExtender) selectVictimsOnNodeByExtender(
 	pod *v1.Pod,
 	node *v1.Node,
-	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 ) ([]*v1.Pod, int, bool, error) {
 	// If a extender support preemption but have no cached node info, let's run filter to make sure
 	// default scheduler's decision still stand with given pod and node.
@@ -267,7 +267,7 @@ func (f *FakeExtender) runPredicate(pod *v1.Pod, node *v1.Node) (bool, error) {
 	return fits, nil
 }
 
-func (f *FakeExtender) Filter(pod *v1.Pod, nodes []*v1.Node, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) ([]*v1.Node, schedulerapi.FailedNodesMap, error) {
+func (f *FakeExtender) Filter(pod *v1.Pod, nodes []*v1.Node, nodeNameToInfo map[string]*schedulerinfo.NodeInfo) ([]*v1.Node, schedulerapi.FailedNodesMap, error) {
 	filtered := []*v1.Node{}
 	failedNodesMap := schedulerapi.FailedNodesMap{}
 	for _, node := range nodes {

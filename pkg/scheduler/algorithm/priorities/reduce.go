@@ -18,7 +18,7 @@ package priorities
 
 import (
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 )
 
@@ -29,7 +29,7 @@ func NormalizeReduce(maxPriority int, reverse bool) PriorityReduceFunction {
 	return func(
 		_ *v1.Pod,
 		_ interface{},
-		_ map[string]*schedulernodeinfo.NodeInfo,
+		_ map[string]*schedulerinfo.NodeInfo,
 		result schedulerapi.HostPriorityList) error {
 
 		var maxCount int

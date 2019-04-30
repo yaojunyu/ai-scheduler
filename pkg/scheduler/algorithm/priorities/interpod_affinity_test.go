@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -510,7 +510,7 @@ func TestInterPodAffinityPriority(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(test.pods, test.nodes)
+			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(test.pods, test.nodes)
 			interPodAffinity := InterPodAffinity{
 				info:                  FakeNodeListInfo(test.nodes),
 				nodeLister:            schedulertesting.FakeNodeLister(test.nodes),
@@ -600,7 +600,7 @@ func TestHardPodAffinitySymmetricWeight(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(test.pods, test.nodes)
+			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(test.pods, test.nodes)
 			ipa := InterPodAffinity{
 				info:                  FakeNodeListInfo(test.nodes),
 				nodeLister:            schedulertesting.FakeNodeLister(test.nodes),

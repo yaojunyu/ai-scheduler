@@ -7,16 +7,25 @@ spec:
   nodeSelector:
     matchLabels:
       gpu: true
+
   # 按支持资源类型匹配机器
-  MatchResources:
-    - gpu
-  # 按权重划分资源
-  weight: 1
+  supportResources:
+    - "nvidia/gpu"
+
+  # 按资源权重划分资源
+  weight:
+    cpu: 1
+    nvidia/gpu: 1
+
+  # quota手动分配
+  quota:
+    cpu: "10"
+    nvidia/gpu: "10"
 
   # 支持的优选算法
   priorites:
     - name: "MostRequestedPriority"
-    - weight: 1
+      weight: 1
 
   # 是否禁用池内任务抢占池内资源
   disablePreemption: false

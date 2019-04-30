@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -43,7 +43,7 @@ func NewNodeLabelPriority(label string, presence bool) (PriorityMapFunction, Pri
 // CalculateNodeLabelPriorityMap checks whether a particular label exists on a node or not, regardless of its value.
 // If presence is true, prioritizes nodes that have the specified label, regardless of value.
 // If presence is false, prioritizes nodes that do not have the specified label.
-func (n *NodeLabelPrioritizer) CalculateNodeLabelPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error) {
+func (n *NodeLabelPrioritizer) CalculateNodeLabelPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")

@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -229,7 +229,7 @@ func TestRequestedToCapacityRatio(t *testing.T) {
 
 		newPod := buildResourcesPod("", test.requested)
 
-		nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(scheduledPods, nodes)
+		nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(scheduledPods, nodes)
 		list, err := priorityFunction(RequestedToCapacityRatioResourceAllocationPriorityDefault().PriorityMap, nil, nil)(newPod, nodeNameToInfo, nodes)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

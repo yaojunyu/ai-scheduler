@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
@@ -31,7 +31,7 @@ import (
 // it will get an add of preferredSchedulingTerm.Weight. Thus, the more preferredSchedulingTerms
 // the node satisfies and the more the preferredSchedulingTerm that is satisfied weights, the higher
 // score the node gets.
-func CalculateNodeAffinityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error) {
+func CalculateNodeAffinityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")

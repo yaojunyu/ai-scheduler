@@ -21,7 +21,7 @@ import (
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilnode "k8s.io/kubernetes/pkg/util/node"
@@ -63,7 +63,7 @@ func NewSelectorSpreadPriority(
 // It favors nodes that have fewer existing matching pods.
 // i.e. it pushes the scheduler towards a node where there's the smallest number of
 // pods which match the same service, RC,RSs or StatefulSets selectors as the pod being scheduled.
-func (s *SelectorSpread) CalculateSpreadPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error) {
+func (s *SelectorSpread) CalculateSpreadPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error) {
 	var selectors []labels.Selector
 	node := nodeInfo.Node()
 	if node == nil {
@@ -96,7 +96,7 @@ func (s *SelectorSpread) CalculateSpreadPriorityMap(pod *v1.Pod, meta interface{
 // based on the number of existing matching pods on the node
 // where zone information is included on the nodes, it favors nodes
 // in zones with fewer existing matching pods.
-func (s *SelectorSpread) CalculateSpreadPriorityReduce(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, result schedulerapi.HostPriorityList) error {
+func (s *SelectorSpread) CalculateSpreadPriorityReduce(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, result schedulerapi.HostPriorityList) error {
 	countsByZone := make(map[string]int, 10)
 	maxCountByZone := int(0)
 	maxCountByNodeName := int(0)
@@ -184,7 +184,7 @@ func (s *ServiceAntiAffinity) getNodeClassificationByLabels(nodes []*v1.Node) (m
 }
 
 // countMatchingPods cout pods based on namespace and matching all selectors
-func countMatchingPods(namespace string, selectors []labels.Selector, nodeInfo *schedulernodeinfo.NodeInfo) int {
+func countMatchingPods(namespace string, selectors []labels.Selector, nodeInfo *schedulerinfo.NodeInfo) int {
 	if nodeInfo.Pods() == nil || len(nodeInfo.Pods()) == 0 || len(selectors) == 0 {
 		return 0
 	}
@@ -210,7 +210,7 @@ func countMatchingPods(namespace string, selectors []labels.Selector, nodeInfo *
 
 // CalculateAntiAffinityPriorityMap spreads pods by minimizing the number of pods belonging to the same service
 // on given machine
-func (s *ServiceAntiAffinity) CalculateAntiAffinityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error) {
+func (s *ServiceAntiAffinity) CalculateAntiAffinityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error) {
 	var firstServiceSelector labels.Selector
 
 	node := nodeInfo.Node()
@@ -238,7 +238,7 @@ func (s *ServiceAntiAffinity) CalculateAntiAffinityPriorityMap(pod *v1.Pod, meta
 
 // CalculateAntiAffinityPriorityReduce computes each node score with the same value for a particular label.
 // The label to be considered is provided to the struct (ServiceAntiAffinity).
-func (s *ServiceAntiAffinity) CalculateAntiAffinityPriorityReduce(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, result schedulerapi.HostPriorityList) error {
+func (s *ServiceAntiAffinity) CalculateAntiAffinityPriorityReduce(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, result schedulerapi.HostPriorityList) error {
 	var numServicePods int
 	var label string
 	podCounts := map[string]int{}

@@ -26,6 +26,7 @@ import (
 
 	"k8s.io/klog"
 
+	resourceinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	latestschedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/latest"
 	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
@@ -119,6 +120,7 @@ var defaultSchedulerOptions = schedulerOptions{
 
 // New returns a Scheduler
 func New(client clientset.Interface,
+	poolInformer resourceinformers.PoolInformer,
 	nodeInformer coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
@@ -142,6 +144,7 @@ func New(client clientset.Interface,
 	configurator := factory.NewConfigFactory(&factory.ConfigFactoryArgs{
 		SchedulerName:                  options.schedulerName,
 		Client:                         client,
+		PoolInformer:					poolInformer,
 		NodeInformer:                   nodeInformer,
 		PodInformer:                    podInformer,
 		PvInformer:                     pvInformer,
@@ -196,7 +199,7 @@ func New(client clientset.Interface,
 	// Create the scheduler.
 	sched := NewFromConfig(config)
 
-	AddAllEventHandlers(sched, options.schedulerName, nodeInformer, podInformer, pvInformer, pvcInformer, replicationControllerInformer, replicaSetInformer, statefulSetInformer, serviceInformer, pdbInformer, storageClassInformer)
+	AddAllEventHandlers(sched, options.schedulerName, poolInformer, nodeInformer, podInformer, pvInformer, pvcInformer, replicationControllerInformer, replicaSetInformer, statefulSetInformer, serviceInformer, pdbInformer, storageClassInformer)
 	return sched, nil
 }
 

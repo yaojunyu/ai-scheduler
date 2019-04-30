@@ -18,7 +18,7 @@ package algorithm
 
 import (
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 )
 
@@ -33,7 +33,7 @@ type SchedulerExtender interface {
 	// expected to be a subset of the supplied list. failedNodesMap optionally contains
 	// the list of failed nodes and failure reasons.
 	Filter(pod *v1.Pod,
-		nodes []*v1.Node, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+		nodes []*v1.Node, nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 	) (filteredNodes []*v1.Node, failedNodesMap schedulerapi.FailedNodesMap, err error)
 
 	// Prioritize based on extender-implemented priority functions. The returned scores & weight
@@ -62,7 +62,7 @@ type SchedulerExtender interface {
 	ProcessPreemption(
 		pod *v1.Pod,
 		nodeToVictims map[*v1.Node]*schedulerapi.Victims,
-		nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+		nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 	) (map[*v1.Node]*schedulerapi.Victims, error)
 
 	// SupportsPreemption returns if the scheduler extender support preemption or not.

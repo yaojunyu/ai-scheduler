@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 )
 
 func TestResourceLimistPriority(t *testing.T) {
@@ -139,7 +139,7 @@ func TestResourceLimistPriority(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(nil, test.nodes)
+			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(nil, test.nodes)
 			list, err := priorityFunction(ResourceLimitsPriorityMap, nil, nil)(test.pod, nodeNameToInfo, test.nodes)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)

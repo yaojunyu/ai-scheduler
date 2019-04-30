@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -790,7 +790,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	for _, test := range tests {
 		os.Setenv(KubeMaxPDVols, strconv.Itoa(test.maxVols))
 		pred := NewMaxPDVolumeCountPredicate(test.filterName, getFakePVInfo(test.filterName), getFakePVCInfo(test.filterName))
-		fits, reasons, err := pred(test.newPod, GetPredicateMetadata(test.newPod, nil), schedulernodeinfo.NewNodeInfo(test.existingPods...))
+		fits, reasons, err := pred(test.newPod, GetPredicateMetadata(test.newPod, nil), schedulerinfo.NewNodeInfo(test.existingPods...))
 		if err != nil {
 			t.Errorf("[%s]%s: unexpected error: %v", test.filterName, test.test, err)
 		}
@@ -937,8 +937,8 @@ func TestMaxVolumeFuncM4(t *testing.T) {
 	}
 }
 
-func getNodeWithPodAndVolumeLimits(pods []*v1.Pod, limit int64, filter string) *schedulernodeinfo.NodeInfo {
-	nodeInfo := schedulernodeinfo.NewNodeInfo(pods...)
+func getNodeWithPodAndVolumeLimits(pods []*v1.Pod, limit int64, filter string) *schedulerinfo.NodeInfo {
+	nodeInfo := schedulerinfo.NewNodeInfo(pods...)
 	node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{Name: "node-for-max-pd-test-1"},
 		Status: v1.NodeStatus{

@@ -18,29 +18,29 @@ package priorities
 
 import (
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 )
 
 // PriorityMapFunction is a function that computes per-node results for a given node.
 // TODO: Figure out the exact API of this method.
 // TODO: Change interface{} to a specific type.
-type PriorityMapFunction func(pod *v1.Pod, meta interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error)
+type PriorityMapFunction func(pod *v1.Pod, meta interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error)
 
 // PriorityReduceFunction is a function that aggregated per-node results and computes
 // final scores for all nodes.
 // TODO: Figure out the exact API of this method.
 // TODO: Change interface{} to a specific type.
-type PriorityReduceFunction func(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, result schedulerapi.HostPriorityList) error
+type PriorityReduceFunction func(pod *v1.Pod, meta interface{}, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, result schedulerapi.HostPriorityList) error
 
 // PriorityMetadataProducer is a function that computes metadata for a given pod. This
 // is now used for only for priority functions. For predicates please use PredicateMetadataProducer.
-type PriorityMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) interface{}
+type PriorityMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo) interface{}
 
 // PriorityFunction is a function that computes scores for all nodes.
 // DEPRECATED
 // Use Map-Reduce pattern for priority functions.
-type PriorityFunction func(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error)
+type PriorityFunction func(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error)
 
 // PriorityConfig is a config used for a priority function.
 type PriorityConfig struct {
@@ -54,6 +54,6 @@ type PriorityConfig struct {
 }
 
 // EmptyPriorityMetadataProducer returns a no-op PriorityMetadataProducer type.
-func EmptyPriorityMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) interface{} {
+func EmptyPriorityMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo) interface{} {
 	return nil
 }

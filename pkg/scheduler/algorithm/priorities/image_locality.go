@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/util/parsers"
 )
@@ -39,7 +39,7 @@ const (
 // based on the total size of those images.
 // - If none of the images are present, this node will be given the lowest priority.
 // - If some of the images are present on a node, the larger their sizes' sum, the higher the node's priority.
-func ImageLocalityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulernodeinfo.NodeInfo) (schedulerapi.HostPriority, error) {
+func ImageLocalityPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedulerinfo.NodeInfo) (schedulerapi.HostPriority, error) {
 	node := nodeInfo.Node()
 	if node == nil {
 		return schedulerapi.HostPriority{}, fmt.Errorf("node not found")
@@ -74,7 +74,7 @@ func calculatePriority(sumScores int64) int {
 // sumImageScores returns the sum of image scores of all the containers that are already on the node.
 // Each image receives a raw score of its size, scaled by scaledImageScore. The raw scores are later used to calculate
 // the final score. Note that the init containers are not considered for it's rare for users to deploy huge init containers.
-func sumImageScores(nodeInfo *schedulernodeinfo.NodeInfo, containers []v1.Container, totalNumNodes int) int64 {
+func sumImageScores(nodeInfo *schedulerinfo.NodeInfo, containers []v1.Container, totalNumNodes int) int64 {
 	var sum int64
 	imageStates := nodeInfo.ImageStates()
 
@@ -91,7 +91,7 @@ func sumImageScores(nodeInfo *schedulernodeinfo.NodeInfo, containers []v1.Contai
 // The size of the image is used as the base score, scaled by a factor which considers how much nodes the image has "spread" to.
 // This heuristic aims to mitigate the undesirable "node heating problem", i.e., pods get assigned to the same or
 // a few nodes due to image locality.
-func scaledImageScore(imageState *schedulernodeinfo.ImageStateSummary, totalNumNodes int) int64 {
+func scaledImageScore(imageState *schedulerinfo.ImageStateSummary, totalNumNodes int) int64 {
 	spread := float64(imageState.NumNodes) / float64(totalNumNodes)
 	return int64(float64(imageState.Size) * spread)
 }

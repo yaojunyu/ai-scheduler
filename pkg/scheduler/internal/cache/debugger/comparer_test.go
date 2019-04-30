@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -72,9 +72,9 @@ func testCompareNodes(actual, cached, missing, redundant []string, t *testing.T)
 		nodes = append(nodes, node)
 	}
 
-	nodeInfo := make(map[string]*schedulernodeinfo.NodeInfo)
+	nodeInfo := make(map[string]*schedulerinfo.NodeInfo)
 	for _, nodeName := range cached {
-		nodeInfo[nodeName] = &schedulernodeinfo.NodeInfo{}
+		nodeInfo[nodeName] = &schedulerinfo.NodeInfo{}
 	}
 
 	m, r := compare.CompareNodes(nodes, nodeInfo)
@@ -170,14 +170,14 @@ func testComparePods(actual, cached, queued, missing, redundant []string, t *tes
 		queuedPods = append(queuedPods, pod)
 	}
 
-	nodeInfo := make(map[string]*schedulernodeinfo.NodeInfo)
+	nodeInfo := make(map[string]*schedulerinfo.NodeInfo)
 	for _, uid := range cached {
 		pod := &v1.Pod{}
 		pod.UID = types.UID(uid)
 		pod.Namespace = "ns"
 		pod.Name = uid
 
-		nodeInfo[uid] = schedulernodeinfo.NewNodeInfo(pod)
+		nodeInfo[uid] = schedulerinfo.NewNodeInfo(pod)
 	}
 
 	m, r := compare.ComparePods(pods, queuedPods, nodeInfo)

@@ -33,7 +33,7 @@ import (
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	fakecache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache/fake"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -135,11 +135,11 @@ func podWithResources(id, desiredHost string, limits v1.ResourceList, requests v
 	return pod
 }
 
-func PredicateOne(pod *v1.Pod, meta predicates.PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []predicates.PredicateFailureReason, error) {
+func PredicateOne(pod *v1.Pod, meta predicates.PredicateMetadata, nodeInfo *schedulerinfo.NodeInfo) (bool, []predicates.PredicateFailureReason, error) {
 	return true, nil, nil
 }
 
-func PriorityOne(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (api.HostPriorityList, error) {
+func PriorityOne(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo, nodes []*v1.Node) (api.HostPriorityList, error) {
 	return []api.HostPriority{}, nil
 }
 
@@ -421,8 +421,8 @@ func TestSchedulerNoPhantomPodAfterDelete(t *testing.T) {
 	}
 
 	// We mimic the workflow of cache behavior when a pod is removed by user.
-	// Note: if the schedulernodeinfo timeout would be super short, the first pod would expire
-	// and would be removed itself (without any explicit actions on schedulernodeinfo). Even in that case,
+	// Note: if the schedulerinfo timeout would be super short, the first pod would expire
+	// and would be removed itself (without any explicit actions on schedulerinfo). Even in that case,
 	// explicitly AddPod will as well correct the behavior.
 	firstPod.Spec.NodeName = node.Name
 	if err := scache.AddPod(firstPod); err != nil {

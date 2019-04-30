@@ -18,7 +18,7 @@ package priorities
 
 import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -45,7 +45,7 @@ func NewPriorityMetadataFactory(serviceLister algorithm.ServiceLister, controlle
 
 // priorityMetadata is a type that is passed as metadata for priority functions
 type priorityMetadata struct {
-	nonZeroRequest          *schedulernodeinfo.Resource
+	nonZeroRequest          *schedulerinfo.Resource
 	podTolerations          []v1.Toleration
 	affinity                *v1.Affinity
 	podSelectors            []labels.Selector
@@ -55,7 +55,7 @@ type priorityMetadata struct {
 }
 
 // PriorityMetadata is a PriorityMetadataProducer.  Node info can be nil.
-func (pmf *PriorityMetadataFactory) PriorityMetadata(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) interface{} {
+func (pmf *PriorityMetadataFactory) PriorityMetadata(pod *v1.Pod, nodeNameToInfo map[string]*schedulerinfo.NodeInfo) interface{} {
 	// If we cannot compute metadata, just return nil
 	if pod == nil {
 		return nil

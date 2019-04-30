@@ -17,8 +17,9 @@ limitations under the License.
 package cache
 
 import (
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -86,6 +87,15 @@ type Cache interface {
 	// IsAssumedPod returns true if the pod is assumed and not expired.
 	IsAssumedPod(pod *v1.Pod) (bool, error)
 
+	// AddPool adds overall information about pool
+	AddPool(pool *v1alpha1.Pool) error
+
+	// UpdatePool updates overall information about pool
+	UpdatePool(oldPool, newPool *v1alpha1.Pool) error
+
+	// RemovePool removes overall information about pool
+	RemovePool(pool *v1alpha1.Pool) error
+
 	// AddNode adds overall information about node.
 	AddNode(node *v1.Node) error
 
@@ -116,13 +126,13 @@ type Cache interface {
 // Snapshot is a snapshot of cache state
 type Snapshot struct {
 	AssumedPods map[string]bool
-	Nodes       map[string]*schedulernodeinfo.NodeInfo
+	Nodes       map[string]*schedulerinfo.NodeInfo
 }
 
 // NodeInfoSnapshot is a snapshot of cache NodeInfo. The scheduler takes a
 // snapshot at the beginning of each scheduling cycle and uses it for its
 // operations in that cycle.
 type NodeInfoSnapshot struct {
-	NodeInfoMap map[string]*schedulernodeinfo.NodeInfo
+	NodeInfoMap map[string]*schedulerinfo.NodeInfo
 	Generation  int64
 }

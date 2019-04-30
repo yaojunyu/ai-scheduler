@@ -24,7 +24,7 @@ import (
 
 	internalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 )
 
@@ -61,7 +61,7 @@ func (d *CacheDumper) dumpSchedulingQueue() {
 }
 
 // printNodeInfo writes parts of NodeInfo to a string.
-func printNodeInfo(n *schedulernodeinfo.NodeInfo) string {
+func printNodeInfo(n *schedulerinfo.NodeInfo) string {
 	var nodeData strings.Builder
 	nodeData.WriteString(fmt.Sprintf("\nNode name: %+v\nRequested Resources: %+v\nAllocatable Resources:%+v\nNumber of Pods: %v\nPods:\n",
 		n.Node().Name, n.RequestedResource(), n.AllocatableResource(), len(n.Pods())))

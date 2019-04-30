@@ -24,6 +24,8 @@ import (
 	"time"
 
 	schedulerappconfig "gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/config"
+	asclientset "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
+	asinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions"
 	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
 	kubeschedulerscheme "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/scheme"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/validation"
@@ -231,7 +233,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	}
 
 	// Prepare kube clients.
-	client, leaderElectionClient, eventClient, err := createClients(c.ComponentConfig.ClientConnection, o.Master, c.ComponentConfig.LeaderElection.RenewDeadline.Duration)
+	client, asclient, leaderElectionClient, eventClient, err := createClients(c.ComponentConfig.ClientConnection, o.Master, c.ComponentConfig.LeaderElection.RenewDeadline.Duration)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +253,8 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 
 	c.Client = client
 	c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
+	c.ASClient = asclient
+	c.AsInformerFactory = asinformers.NewSharedInformerFactory(asclient, 0)
 	c.PodInformer = factory.NewPodInformer(client, 0)
 	c.EventClient = eventClient
 	c.Recorder = recorder
@@ -295,7 +299,7 @@ func makeLeaderElectionConfig(config kubeschedulerconfig.KubeSchedulerLeaderElec
 
 // createClients creates a kube client and an event client from the given config and masterOverride.
 // TODO remove masterOverride when CLI flags are removed.
-func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, clientset.Interface, v1core.EventsGetter, error) {
+func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, asclientset.Interface, clientset.Interface, v1core.EventsGetter, error) {
 	if len(config.Kubeconfig) == 0 && len(masterOverride) == 0 {
 		klog.Warningf("Neither --kubeconfig nor --master was specified. Using default API client. This might not work.")
 	}
@@ -306,7 +310,7 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: config.Kubeconfig},
 		&clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: masterOverride}}).ClientConfig()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	kubeConfig.AcceptContentTypes = config.AcceptContentTypes
@@ -317,7 +321,12 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 
 	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeConfig, "scheduler"))
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+
+	asclient, err := asclientset.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	// shallow copy, do not modify the kubeConfig.Timeout.
@@ -325,13 +334,13 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 	restConfig.Timeout = timeout
 	leaderElectionClient, err := clientset.NewForConfig(restclient.AddUserAgent(&restConfig, "leader-election"))
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	eventClient, err := clientset.NewForConfig(kubeConfig)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return client, leaderElectionClient, eventClient.CoreV1(), nil
+	return client, asclient, leaderElectionClient, eventClient.CoreV1(), nil
 }

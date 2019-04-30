@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -354,8 +354,8 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			allPodLister := schedulertesting.FakePodLister(append(test.existingPods, test.addedPod))
 			// getMeta creates predicate meta data given the list of pods.
-			getMeta := func(lister schedulertesting.FakePodLister) (*predicateMetadata, map[string]*schedulernodeinfo.NodeInfo) {
-				nodeInfoMap := schedulernodeinfo.CreateNodeNameToInfoMap(lister, test.nodes)
+			getMeta := func(lister schedulertesting.FakePodLister) (*predicateMetadata, map[string]*schedulerinfo.NodeInfo) {
+				nodeInfoMap := schedulerinfo.CreateNodeNameToInfoMap(lister, test.nodes)
 				// nodeList is a list of non-pointer nodes to feed to FakeNodeListInfo.
 				nodeList := []v1.Node{}
 				for _, n := range test.nodes {
@@ -407,7 +407,7 @@ func TestPredicateMetadata_ShallowCopy(t *testing.T) {
 			},
 		},
 		podBestEffort: true,
-		podRequest: &schedulernodeinfo.Resource{
+		podRequest: &schedulerinfo.Resource{
 			MilliCPU:         1000,
 			Memory:           300,
 			AllowedPodNumber: 4,
@@ -775,7 +775,7 @@ func TestGetTPMapMatchingIncomingAffinityAntiAffinity(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nodeInfoMap := schedulernodeinfo.CreateNodeNameToInfoMap(tt.existingPods, tt.nodes)
+			nodeInfoMap := schedulerinfo.CreateNodeNameToInfoMap(tt.existingPods, tt.nodes)
 
 			gotAffinityPodsMaps, gotAntiAffinityPodsMaps, err := getTPMapMatchingIncomingAffinityAntiAffinity(tt.pod, nodeInfoMap)
 			if (err != nil) != tt.wantErr {

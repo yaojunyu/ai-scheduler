@@ -156,6 +156,7 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 
 	// Create the scheduler.
 	sched, err := scheduler.New(cc.Client,
+		cc.AsInformerFactory.Resource().V1alpha1().Pools(),
 		cc.InformerFactory.Core().V1().Nodes(),
 		cc.PodInformer,
 		cc.InformerFactory.Core().V1().PersistentVolumes(),
@@ -216,9 +217,11 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 	// Start all informers.
 	go cc.PodInformer.Informer().Run(stopCh)
 	cc.InformerFactory.Start(stopCh)
+	cc.AsInformerFactory.Start(stopCh)
 
 	// Wait for all caches to sync before scheduling.
 	cc.InformerFactory.WaitForCacheSync(stopCh)
+	cc.AsInformerFactory.WaitForCacheSync(stopCh)
 	controller.WaitForCacheSync("scheduler", stopCh, cc.PodInformer.Informer().HasSynced)
 
 	// Prepare a reusable runCommand function.

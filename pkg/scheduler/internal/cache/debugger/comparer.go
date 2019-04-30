@@ -22,7 +22,7 @@ import (
 
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -68,7 +68,7 @@ func (c *CacheComparer) Compare() error {
 }
 
 // CompareNodes compares actual nodes with cached nodes.
-func (c *CacheComparer) CompareNodes(nodes []*v1.Node, nodeinfos map[string]*schedulernodeinfo.NodeInfo) (missed, redundant []string) {
+func (c *CacheComparer) CompareNodes(nodes []*v1.Node, nodeinfos map[string]*schedulerinfo.NodeInfo) (missed, redundant []string) {
 	actual := []string{}
 	for _, node := range nodes {
 		actual = append(actual, node.Name)
@@ -83,7 +83,7 @@ func (c *CacheComparer) CompareNodes(nodes []*v1.Node, nodeinfos map[string]*sch
 }
 
 // ComparePods compares actual pods with cached pods.
-func (c *CacheComparer) ComparePods(pods, waitingPods []*v1.Pod, nodeinfos map[string]*schedulernodeinfo.NodeInfo) (missed, redundant []string) {
+func (c *CacheComparer) ComparePods(pods, waitingPods []*v1.Pod, nodeinfos map[string]*schedulerinfo.NodeInfo) (missed, redundant []string) {
 	actual := []string{}
 	for _, pod := range pods {
 		actual = append(actual, string(pod.UID))

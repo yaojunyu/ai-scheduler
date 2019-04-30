@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
@@ -338,7 +338,7 @@ func TestSelectorSpreadPriority(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(test.pods, makeNodeList(test.nodes))
+			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(test.pods, makeNodeList(test.nodes))
 			selectorSpread := SelectorSpread{
 				serviceLister:     schedulertesting.FakeServiceLister(test.services),
 				controllerLister:  schedulertesting.FakeControllerLister(test.rcs),
@@ -574,7 +574,7 @@ func TestZoneSelectorSpreadPriority(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(labeledNodes))
+			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(labeledNodes))
 			selectorSpread := SelectorSpread{
 				serviceLister:     schedulertesting.FakeServiceLister(test.services),
 				controllerLister:  schedulertesting.FakeControllerLister(test.rcs),
@@ -766,7 +766,7 @@ func TestZoneSpreadPriority(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeNameToInfo := schedulernodeinfo.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(test.nodes))
+			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(test.pods, makeLabeledNodeList(test.nodes))
 			zoneSpread := ServiceAntiAffinity{podLister: schedulertesting.FakePodLister(test.pods), serviceLister: schedulertesting.FakeServiceLister(test.services), label: "zone"}
 
 			metaDataProducer := NewPriorityMetadataFactory(

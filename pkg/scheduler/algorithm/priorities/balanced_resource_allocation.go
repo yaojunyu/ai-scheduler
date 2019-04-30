@@ -20,7 +20,7 @@ import (
 	"math"
 
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/features"
 )
@@ -38,7 +38,7 @@ var (
 	BalancedResourceAllocationMap = balancedResourcePriority.PriorityMap
 )
 
-func balancedResourceScorer(requested, allocable *schedulernodeinfo.Resource, includeVolumes bool, requestedVolumes int, allocatableVolumes int) int64 {
+func balancedResourceScorer(requested, allocable *schedulerinfo.Resource, includeVolumes bool, requestedVolumes int, allocatableVolumes int) int64 {
 	cpuFraction := fractionOfCapacity(requested.MilliCPU, allocable.MilliCPU)
 	memoryFraction := fractionOfCapacity(requested.Memory, allocable.Memory)
 	// This to find a node which has most balanced CPU, memory and volume usage.

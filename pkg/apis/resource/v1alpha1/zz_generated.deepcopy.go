@@ -96,10 +96,17 @@ func (in *PoolSpec) DeepCopyInto(out *PoolSpec) {
 		*out = new(v1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.MatchResources != nil {
-		in, out := &in.MatchResources, &out.MatchResources
+	if in.SupportResources != nil {
+		in, out := &in.SupportResources, &out.SupportResources
 		*out = make([]corev1.ResourceName, len(*in))
 		copy(*out, *in)
+	}
+	if in.Weight != nil {
+		in, out := &in.Weight, &out.Weight
+		*out = make(map[corev1.ResourceName]int32, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.Quota != nil {
 		in, out := &in.Quota, &out.Quota

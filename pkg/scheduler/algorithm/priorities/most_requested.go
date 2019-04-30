@@ -18,7 +18,7 @@ package priorities
 
 import (
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 )
 
 var (
@@ -31,7 +31,7 @@ var (
 	MostRequestedPriorityMap = mostResourcePriority.PriorityMap
 )
 
-func mostResourceScorer(requested, allocable *schedulernodeinfo.Resource, includeVolumes bool, requestedVolumes int, allocatableVolumes int) int64 {
+func mostResourceScorer(requested, allocable *schedulerinfo.Resource, includeVolumes bool, requestedVolumes int, allocatableVolumes int) int64 {
 	return (mostRequestedScore(requested.MilliCPU, allocable.MilliCPU) +
 		mostRequestedScore(requested.Memory, allocable.Memory)) / 2
 }

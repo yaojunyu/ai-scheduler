@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	schedulernodeinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -30,9 +30,9 @@ func TestEmptyPriorityMetadataProducer(t *testing.T) {
 	fakePod := new(v1.Pod)
 	fakeLabelSelector := labels.SelectorFromSet(labels.Set{"foo": "bar"})
 
-	nodeNameToInfo := map[string]*schedulernodeinfo.NodeInfo{
-		"2": schedulernodeinfo.NewNodeInfo(fakePod),
-		"1": schedulernodeinfo.NewNodeInfo(),
+	nodeNameToInfo := map[string]*schedulerinfo.NodeInfo{
+		"2": schedulerinfo.NewNodeInfo(fakePod),
+		"1": schedulerinfo.NewNodeInfo(),
 	}
 	// Test EmptyPriorityMetadataProducer
 	metadata := EmptyPriorityMetadataProducer(fakePod, nodeNameToInfo)

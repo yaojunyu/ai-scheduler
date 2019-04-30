@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"time"
 
+	resourceinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
+	resourcelister "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/listers/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
@@ -165,6 +167,8 @@ type configFactory struct {
 	scheduledPodLister corelisters.PodLister
 	// a means to list all known scheduled pods and pods assumed to have been scheduled.
 	podLister algorithm.PodLister
+	// a means to list all pools
+	poolLister resourcelister.PoolLister
 	// a means to list all nodes
 	nodeLister corelisters.NodeLister
 	// a means to list all PersistentVolumes
@@ -223,6 +227,7 @@ type configFactory struct {
 type ConfigFactoryArgs struct {
 	SchedulerName                  string
 	Client                         clientset.Interface
+	PoolInformer 				   resourceinformers.PoolInformer
 	NodeInformer                   coreinformers.NodeInformer
 	PodInformer                    coreinformers.PodInformer
 	PvInformer                     coreinformers.PersistentVolumeInformer
@@ -258,6 +263,7 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 		client:                         args.Client,
 		podLister:                      schedulerCache,
 		podQueue:                       internalqueue.NewSchedulingQueue(stopEverything),
+		poolLister:						args.PoolInformer.Lister(),
 		nodeLister:                     args.NodeInformer.Lister(),
 		pVLister:                       args.PvInformer.Lister(),
 		pVCLister:                      args.PvcInformer.Lister(),
