@@ -313,6 +313,11 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, nil, err
 	}
 
+	asclient, err := asclientset.NewForConfig(restclient.AddUserAgent(kubeConfig, "ai-scheduler"))
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
 	kubeConfig.AcceptContentTypes = config.AcceptContentTypes
 	kubeConfig.ContentType = config.ContentType
 	kubeConfig.QPS = config.QPS
@@ -320,11 +325,6 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 	kubeConfig.Burst = int(config.Burst)
 
 	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeConfig, "scheduler"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	asclient, err := asclientset.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

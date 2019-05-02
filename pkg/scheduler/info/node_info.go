@@ -228,7 +228,7 @@ func (r *Resource) SetScalar(name v1.ResourceName, quantity int64) {
 }
 
 // SetMaxResource compares with ResourceList and takes max value for each Resource.
-func (r *Resource) SetMaxResource(rl v1.ResourceList) {
+func (r *Resource)  SetMaxResource(rl v1.ResourceList) {
 	if r == nil {
 		return
 	}
@@ -699,4 +699,69 @@ func (n *NodeInfo) Filter(pod *v1.Pod) bool {
 		}
 	}
 	return false
+}
+
+//Sub subtracts two Resource objects.
+func (r *Resource) Sub(rr *Resource) *Resource {
+	r.MilliCPU -= rr.MilliCPU
+	r.Memory -= rr.Memory
+	r.AllowedPodNumber -= rr.AllowedPodNumber
+	r.EphemeralStorage -= rr.EphemeralStorage
+
+	for rrName, rrQuant := range rr.ScalarResources {
+		if r.ScalarResources == nil {
+			return r
+		}
+		r.ScalarResources[rrName] -= rrQuant
+	}
+
+	return r
+}
+
+func (r *Resource) GetValue(name v1.ResourceName) int64 {
+	if r == nil || name == "" {
+		return 0
+	}
+	res, ok := r.ResourceList()[name]
+	if !ok {
+		return 0
+	}
+	if name == v1.ResourceCPU {
+		return res.MilliValue()
+	} else {
+		return res.Value()
+	}
+
+}
+
+func (r *Resource) SetValue(name v1.ResourceName, value int64) {
+	if r == nil || name == "" || value < 0 {
+		return
+	}
+	switch name {
+	case v1.ResourceCPU:
+		r.MilliCPU = value
+	case v1.ResourceMemory:
+		r.Memory = value
+	case v1.ResourceEphemeralStorage:
+		r.EphemeralStorage = value
+	case v1.ResourcePods:
+		r.AllowedPodNumber = int(value)
+	default:
+		r.SetScalar(name, value)
+	}
+}
+
+// ResourceNames returns all resource types
+func (r *Resource) ResourceNames() []v1.ResourceName {
+	if r == nil {
+		return nil
+	}
+
+	list := r.ResourceList()
+	resNames := make([]v1.ResourceName, 0, len(list))
+	for rName := range list {
+		resNames = append(resNames, rName)
+	}
+	return resNames
 }

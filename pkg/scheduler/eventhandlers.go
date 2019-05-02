@@ -100,7 +100,7 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 		klog.Errorf("scheduler cache AddPool failed: %v", err)
 	}
 
-
+	sched.Cache().DeserveAllPools()
 }
 
 func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
@@ -118,6 +118,8 @@ func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
 	if err := sched.config.SchedulerCache.UpdatePool(oldPool, newPool); err != nil {
 		klog.Errorf("scheduler cache UpdatePool failed: %v", err)
 	}
+
+	sched.Cache().DeserveAllPools()
 }
 
 func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
@@ -145,6 +147,8 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.RemovePool(pool); err != nil {
 		klog.Errorf("scheduler cache RemovePool failed: %v", err)
 	}
+
+	sched.Cache().DeserveAllPools()
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {

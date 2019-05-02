@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"sort"
 
 	"k8s.io/api/core/v1"
@@ -96,4 +97,20 @@ func (l *SortableList) Sort() {
 // SortableList, but expects those arguments to be *v1.Pod.
 func HigherPriorityPod(pod1, pod2 interface{}) bool {
 	return GetPodPriority(pod1.(*v1.Pod)) > GetPodPriority(pod2.(*v1.Pod))
+}
+
+// GetPoolResourceQuota return quota of the given pool and resource name.
+func GetPoolResourceQuota(pool *v1alpha1.Pool, name v1.ResourceName) int64 {
+	if pool == nil && name == "" {
+		return 0
+	}
+	if _, ok := pool.Spec.Quota[name]; ok {
+		quota := pool.Spec.Quota[name]
+		if name == v1.ResourceCPU {
+			return quota.MilliValue()
+		} else {
+			return quota.Value()
+		}
+	}
+	return 0
 }

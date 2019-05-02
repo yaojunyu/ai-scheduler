@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package api
+package info
 
 // TaskStatus defines the status of a task/pod.
 type TaskStatus int
@@ -73,36 +73,3 @@ func (ts TaskStatus) String() string {
 		return "Unknown"
 	}
 }
-
-// validateStatusUpdate validates whether the status transfer is valid.
-func validateStatusUpdate(oldStatus, newStatus TaskStatus) error {
-	return nil
-}
-
-// LessFn is the func declaration used by sort or priority queue.
-type LessFn func(interface{}, interface{}) bool
-
-// CompareFn is the func declaration used by sort or priority queue.
-type CompareFn func(interface{}, interface{}) int
-
-// ValidateFn is the func declaration used to check object's status.
-type ValidateFn func(interface{}) bool
-
-// ValidateResult is struct to which can used to determine the result
-type ValidateResult struct {
-	Pass    bool
-	Reason  string
-	Message string
-}
-
-// ValidateExFn is the func declaration used to validate the result
-type ValidateExFn func(interface{}) *ValidateResult
-
-// PredicateFn is the func declaration used to predicate node for task.
-type PredicateFn func(*TaskInfo, *NodeInfo) error
-
-// EvictableFn is the func declaration used to evict tasks.
-type EvictableFn func(*TaskInfo, []*TaskInfo) []*TaskInfo
-
-// NodeOrderFn is the func declaration used to get priority score for a node for a particular task.
-type NodeOrderFn func(*TaskInfo, *NodeInfo) (float64, error)

@@ -17,6 +17,7 @@ limitations under the License.
 package info
 
 import (
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -75,4 +76,70 @@ func createImageExistenceMap(nodes []*v1.Node) map[string]sets.String {
 		}
 	}
 	return imageExistenceMap
+}
+
+func getTaskStatus(pod *v1.Pod) TaskStatus {
+	switch pod.Status.Phase {
+	case v1.PodRunning:
+		if pod.DeletionTimestamp != nil {
+			return Releasing
+		}
+
+		return Running
+	case v1.PodPending:
+		if pod.DeletionTimestamp != nil {
+			return Releasing
+		}
+
+		if len(pod.Spec.NodeName) == 0 {
+			return Pending
+		}
+		return Bound
+	case v1.PodUnknown:
+		return Unknown
+	case v1.PodSucceeded:
+		return Succeeded
+	case v1.PodFailed:
+		return Failed
+	}
+
+	return Unknown
+}
+
+// AllocatedStatus checks whether the tasks has AllocatedStatus
+func AllocatedStatus(pod *v1.Pod) bool {
+	var status = getTaskStatus(pod)
+	switch status {
+	case Bound, Binding, Running, Allocated:
+		return true
+	default:
+		return false
+	}
+}
+
+// GetPodResourceRequest returns Pod's resource request, it does not contain
+// init containers' resource request.
+func GetPodResourceRequest(pod *v1.Pod) *Resource {
+	result := &Resource{}
+	for _, container := range pod.Spec.Containers {
+		result.Add(container.Resources.Requests)
+	}
+
+	return result
+}
+
+func GetPodPoolName(pod *v1.Pod) string {
+	if pod == nil {
+		return ""
+	}
+	name, ok := pod.Annotations[v1alpha1.GroupNameAnnotationKey]
+	if !ok {
+		return ""
+	}
+
+	return name
+}
+
+func BelongToDefaultPool(pod *v1.Pod) bool {
+	return GetPodPoolName(pod) == ""
 }

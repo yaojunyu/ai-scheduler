@@ -28,7 +28,7 @@ spec:
           type: object
         spec:
           properties:
-            weight:
+            weight.value:
               format: int32
               type: integer
             disablePreemption:

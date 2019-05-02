@@ -121,6 +121,9 @@ type Cache interface {
 
 	// NodeTree returns a node tree structure
 	NodeTree() *NodeTree
+
+	// DeserveAllPools compute all pools' deserved resources  quota
+	DeserveAllPools() error
 }
 
 // Snapshot is a snapshot of cache state
