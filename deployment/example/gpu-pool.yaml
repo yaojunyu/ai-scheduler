@@ -1,26 +1,26 @@
 apiVersion: resource.aibee.cn/v1alpha1
 kind: Pool
 metadata:
-  name: sample-pool
+  name: gpu-pool
 spec:
   # 按label匹配机器
   nodeSelector:
     matchLabels:
-      gpu: true
+      gpu: "true"
 
   # 按支持资源类型匹配机器
-  supportResources:
-    - "nvidia/gpu"
+#  supportResources:
+#    - "nvidia.com/gpu"
 
   # 按资源权重划分资源
-  weight:
-    cpu: 1
-    nvidia/gpu: 1
+#  weight:
+#    cpu: 0
+#    nvidia.com/gpu: 1
 
   # quota手动分配
   quota:
     cpu: "10"
-    nvidia/gpu: "10"
+    nvidia.com/gpu: "10"
 
   # 支持的优选算法
   priorites:

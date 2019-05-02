@@ -1,0 +1,35 @@
+apiVersion: resource.aibee.cn/v1alpha1
+kind: Pool
+metadata:
+  name: cpu-pool
+spec:
+  # 按label匹配机器
+#  nodeSelector:
+#    matchLabels:
+#      cpu: "true"
+
+  # 按支持资源类型匹配机器
+  supportResources:
+    - "cpu"
+
+  # 按资源权重划分资源
+  weight:
+    cpu: 1
+    nvidia.com/gpu: 0
+
+  # quota手动分配
+  quota:
+    cpu: "10"
+    nvidia.com/gpu: "10"
+
+  # 支持的优选算法
+  priorites:
+    - name: "MostRequestedPriority"
+      weight: 1
+
+  # 是否禁用池内任务抢占池内资源
+  disablePreemption: false
+  # 是否禁用池内任务借用池外资源
+  disableBorrowing: false
+  # 是否禁用共享池内资源给池外任务
+  disableSharing: false
