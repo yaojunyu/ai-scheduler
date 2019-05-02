@@ -436,7 +436,7 @@ func (sched *Scheduler) bind(assumed *v1.Pod, b *v1.Binding) error {
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
-func (sched *Scheduler) scheduleOne() {
+func (sched *Scheduler)  scheduleOne() {
 	plugins := sched.config.PluginSet
 	// Remove all plugin context data at the beginning of a scheduling cycle.
 	if plugins.Data().Ctx != nil {

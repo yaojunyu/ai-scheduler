@@ -132,12 +132,10 @@ func GetPodPoolName(pod *v1.Pod) string {
 	if pod == nil {
 		return ""
 	}
-	name, ok := pod.Annotations[v1alpha1.GroupNameAnnotationKey]
-	if !ok {
-		return ""
+	if name, ok := pod.Annotations[v1alpha1.GroupNameAnnotationKey]; ok {
+		return name
 	}
-
-	return name
+	return DefaultPool
 }
 
 func BelongToDefaultPool(pod *v1.Pod) bool {

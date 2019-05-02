@@ -115,8 +115,8 @@ func (in *PoolSpec) DeepCopyInto(out *PoolSpec) {
 			(*out)[key] = val.DeepCopy()
 		}
 	}
-	if in.Priorities != nil {
-		in, out := &in.Priorities, &out.Priorities
+	if in.Scores != nil {
+		in, out := &in.Scores, &out.Scores
 		*out = make([]apiv1.PriorityPolicy, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

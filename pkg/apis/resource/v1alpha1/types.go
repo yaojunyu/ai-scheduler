@@ -42,9 +42,12 @@ type PoolSpec struct{
 	// +optional
 	Quota v1.ResourceList `json:"quota,omitempty"`
 
-	// Priorities is scheduler priorities policy
+	// Scores is scheduler scoring policy
 	// +optional
-	Priorities []apiv1.PriorityPolicy `json:"priorities,omitempty"`
+	Scores []apiv1.PriorityPolicy `json:"priorities,omitempty"`
+
+	// Priority is the pool's priority determined scheduling order when borrowing
+	Priority int64 `json:"priority,omitempty"`
 
 	// DisablePreemption flag whether task can preempt resources in the same pool ,
 	// if false, task in pool can preempt resources from other pools
