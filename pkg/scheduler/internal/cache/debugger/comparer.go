@@ -34,7 +34,8 @@ type CacheComparer struct {
 	NodeLister corelisters.NodeLister
 	PodLister  corelisters.PodLister
 	Cache      schedulerinternalcache.Cache
-	PodQueue   internalqueue.SchedulingQueue
+	//PodQueue   internalqueue.SchedulingQueue
+	PoolQueue  internalqueue.SchedulingPoolQueue
 }
 
 // Compare compares the nodes and pods of NodeLister with Cache.Snapshot.
@@ -54,7 +55,8 @@ func (c *CacheComparer) Compare() error {
 
 	snapshot := c.Cache.Snapshot()
 
-	pendingPods := c.PodQueue.PendingPods()
+	//pendingPods := c.PodQueue.PendingPods()
+	pendingPods := c.PoolQueue.PendingPods()
 
 	if missed, redundant := c.CompareNodes(nodes, snapshot.Nodes); len(missed)+len(redundant) != 0 {
 		klog.Warningf("cache mismatch: missed nodes: %s; redundant nodes: %s", missed, redundant)

@@ -101,6 +101,8 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 	}
 
 	//sched.Cache().DeserveAllPools()
+
+	sched.config.SchedulingQueue.AddQueue(pool.Name, sched.config.StopEverything)
 }
 
 func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
@@ -149,6 +151,11 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 	}
 
 	//sched.Cache().DeserveAllPools()
+
+
+	if err := sched.config.SchedulingQueue.RemoveQueue(pool.Name); err == nil {
+		// TODO stop goroutine
+	}
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {

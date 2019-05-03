@@ -901,9 +901,14 @@ func newNominatedPodMap() *nominatedPodMap {
 
 // MakeNextPodFunc returns a function to retrieve the next pod from a given
 // scheduling queue
-func MakeNextPodFunc(queue SchedulingQueue) func() *v1.Pod {
-	return func() *v1.Pod {
-		pod, err := queue.Pop()
+func MakeNextPodFunc(queue SchedulingPoolQueue) func(string) *v1.Pod {
+	return func(poolName string) *v1.Pod {
+		q, err := queue.GetQueue(poolName)
+		if err != nil {
+			klog.Errorf("Error while getting poolQueue %s: %v", poolName, err)
+			return nil
+		}
+		pod, err := q.Pop()
 		if err == nil {
 			klog.V(4).Infof("About to try and schedule pod %v/%v", pod.Namespace, pod.Name)
 			return pod

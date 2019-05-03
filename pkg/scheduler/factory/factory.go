@@ -101,7 +101,7 @@ type Config struct {
 	// is available. We don't use a channel for this, because scheduling
 	// a pod may take some amount of time and we don't want pods to get
 	// stale while they sit in a channel.
-	NextPod func() *v1.Pod
+	NextPod func(string) *v1.Pod
 
 	// WaitForCacheSync waits for scheduler cache to populate.
 	// It returns true if it was successful, false if the controller should shutdown.
@@ -109,7 +109,7 @@ type Config struct {
 
 	// Error is called if there is an error. It is passed the pod in
 	// question, and the error
-	Error func(*v1.Pod, error)
+	Error func(string, *v1.Pod, error)
 
 	// Recorder is the EventRecorder to use
 	Recorder record.EventRecorder
@@ -124,7 +124,8 @@ type Config struct {
 	DisablePreemption bool
 
 	// SchedulingQueue holds pods to be scheduled
-	SchedulingQueue internalqueue.SchedulingQueue
+	//SchedulingQueue internalqueue.SchedulingQueue
+	SchedulingQueue *internalqueue.PoolQueue
 }
 
 // PodPreemptor has methods needed to delete a pod and to update
@@ -220,7 +221,7 @@ type configFactory struct {
 
 	bindTimeoutSeconds int64
 	// queue for pods that need scheduling
-	podQueue internalqueue.SchedulingQueue
+	//podQueue internalqueue.SchedulingQueue
 
 	// queue for resource pool scheduling
 	poolQueue *internalqueue.PoolQueue
@@ -265,7 +266,7 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 	c := &configFactory{
 		client:                         args.Client,
 		podLister:                      schedulerCache,
-		podQueue:                       internalqueue.NewSchedulingQueue(stopEverything),
+		//podQueue:                       internalqueue.NewSchedulingQueue(stopEverything),
 		poolQueue:						internalqueue.NewPoolQueue(stopEverything),
 		poolLister:						args.PoolInformer.Lister(),
 		nodeLister:                     args.NodeInformer.Lister(),
@@ -297,13 +298,14 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 		args.NodeInformer.Lister(),
 		args.PodInformer.Lister(),
 		c.schedulerCache,
-		c.podQueue,
+		//c.podQueue,
+		c.poolQueue,
 	)
 	debugger.ListenForSignal(c.StopEverything)
 
 	go func() {
 		<-c.StopEverything
-		c.podQueue.Close()
+		c.poolQueue.Close()
 	}()
 	return c
 }
@@ -450,7 +452,8 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 
 	algo := core.NewGenericScheduler(
 		c.schedulerCache,
-		c.podQueue,
+		//c.podQueue,
+		c.poolQueue,
 		predicateFuncs,
 		predicateMetaProducer,
 		priorityConfigs,
@@ -478,11 +481,11 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		WaitForCacheSync: func() bool {
 			return cache.WaitForCacheSync(c.StopEverything, c.scheduledPodsHasSynced)
 		},
-		NextPod:         internalqueue.MakeNextPodFunc(c.podQueue),
-		Error:           MakeDefaultErrorFunc(c.client, podBackoff, c.podQueue, c.schedulerCache, c.StopEverything),
+		NextPod:         internalqueue.MakeNextPodFunc(c.poolQueue),
+		Error:           MakeDefaultErrorFunc(c.client, podBackoff, c.poolQueue, c.schedulerCache, c.StopEverything),
 		StopEverything:  c.StopEverything,
 		VolumeBinder:    c.volumeBinder,
-		SchedulingQueue: c.podQueue,
+		SchedulingQueue: c.poolQueue,
 	}, nil
 }
 
@@ -648,8 +651,8 @@ func NewPodInformer(client clientset.Interface, resyncPeriod time.Duration) core
 }
 
 // MakeDefaultErrorFunc construct a function to handle pod scheduler error
-func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, podQueue internalqueue.SchedulingQueue, schedulerCache schedulerinternalcache.Cache, stopEverything <-chan struct{}) func(pod *v1.Pod, err error) {
-	return func(pod *v1.Pod, err error) {
+func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, poolQueue internalqueue.SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache, stopEverything <-chan struct{}) func(poolName string, pod *v1.Pod, err error) {
+	return func(poolName string, pod *v1.Pod, err error) {
 		if err == core.ErrNoNodesAvailable {
 			klog.V(4).Infof("Unable to schedule %v/%v: no nodes are registered to the cluster; waiting", pod.Namespace, pod.Name)
 		} else {
@@ -672,6 +675,11 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 		}
 
 		backoff.Gc()
+		podQueue, err := poolQueue.GetQueue(poolName)
+		if err != nil {
+			klog.Errorf("Error while getting poolQueue %s when call MakeDefaultErrorFunc : %v", poolName, err)
+			return
+		}
 		podSchedulingCycle := podQueue.SchedulingCycle()
 		// Retry asynchronously.
 		// Note that this is extremely rudimentary and we need a more real error handling path.

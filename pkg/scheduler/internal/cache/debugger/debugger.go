@@ -36,18 +36,21 @@ func New(
 	nodeLister corelisters.NodeLister,
 	podLister corelisters.PodLister,
 	cache internalcache.Cache,
-	podQueue internalqueue.SchedulingQueue,
+	//podQueue internalqueue.SchedulingQueue,
+	poolQueue internalqueue.SchedulingPoolQueue,
 ) *CacheDebugger {
 	return &CacheDebugger{
 		Comparer: CacheComparer{
 			NodeLister: nodeLister,
 			PodLister:  podLister,
 			Cache:      cache,
-			PodQueue:   podQueue,
+			//PodQueue:   podQueue,
+			PoolQueue:   poolQueue,
 		},
 		Dumper: CacheDumper{
 			cache:    cache,
-			podQueue: podQueue,
+			//podQueue: podQueue,
+			poolQueue: poolQueue,
 		},
 	}
 }

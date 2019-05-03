@@ -32,7 +32,8 @@ import (
 // scheduler logs for debugging purposes.
 type CacheDumper struct {
 	cache    internalcache.Cache
-	podQueue queue.SchedulingQueue
+	//podQueue queue.SchedulingQueue
+	poolQueue queue.SchedulingPoolQueue
 }
 
 // DumpAll writes cached nodes and scheduling queue information to the scheduler logs.
@@ -52,7 +53,7 @@ func (d *CacheDumper) dumpNodes() {
 
 // dumpSchedulingQueue writes pods in the scheduling queue to the scheduler logs.
 func (d *CacheDumper) dumpSchedulingQueue() {
-	pendingPods := d.podQueue.PendingPods()
+	pendingPods := d.poolQueue.PendingPods()
 	var podData strings.Builder
 	for _, p := range pendingPods {
 		podData.WriteString(printPod(p))

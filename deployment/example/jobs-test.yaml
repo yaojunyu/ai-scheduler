@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-job
+spec:
+  parallelism: 4
+  template:
+    metadata:
+      name: test-job
+      annotations:
+        resource.aibee.cn/pool: staging-gpu-pool
+    spec:
+      schedulerName: ai-scheduler
+      containers:
+        - name: pi
+          image: perl
+          command: ["perl"]
+          args: ["-Mbignum=bpi", "-wle", "print bpi(2000)"]
+          resources:
+            limits:
+              cpu: 100m
+            requests:
+              cpu: 100m
+      restartPolicy: Never
+  backoffLimit: 1
