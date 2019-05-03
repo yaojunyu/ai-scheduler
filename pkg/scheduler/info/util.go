@@ -117,14 +117,12 @@ func AllocatedStatus(pod *v1.Pod) bool {
 	}
 }
 
-// GetPodResourceRequest returns Pod's resource request, it does not contain
-// init containers' resource request.
-func GetPodResourceRequest(pod *v1.Pod) *Resource {
-	result := &Resource{}
-	for _, container := range pod.Spec.Containers {
-		result.Add(container.Resources.Requests)
-	}
-
+// GetPodResourceRequestWithNonZeroContainer
+func GetPodResourceRequestWithNonZeroContainer(pod *v1.Pod) *Resource {
+	res, _, _ := calculateResource(pod)
+	result := res.Clone()
+	//result.MilliCPU += non0CPU
+	//result.Memory += non0Mem
 	return result
 }
 
@@ -132,12 +130,10 @@ func GetPodPoolName(pod *v1.Pod) string {
 	if pod == nil {
 		return ""
 	}
-	if name, ok := pod.Annotations[v1alpha1.GroupNameAnnotationKey]; ok {
-		return name
-	}
-	return DefaultPool
+	name, _ := pod.Annotations[v1alpha1.GroupNameAnnotationKey]
+	return name
 }
 
-func BelongToDefaultPool(pod *v1.Pod) bool {
-	return GetPodPoolName(pod) == ""
-}
+//func BelongToDefaultPool(pod *v1.Pod) bool {
+//	return GetPodPoolName(pod) == DefaultPool
+//}

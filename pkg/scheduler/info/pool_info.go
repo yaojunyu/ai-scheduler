@@ -1,10 +1,12 @@
 package info
 
 import (
+	"fmt"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 )
 const (
@@ -13,7 +15,7 @@ const (
 
 	// DefaultPool name of Default pool, DefaultPool collect all pods not belong
 	// to any pools.
-	DefaultPool = "default"
+	//DefaultPool = "default"
 )
 type PoolInfo struct {
 	pool *v1alpha1.Pool
@@ -21,7 +23,7 @@ type PoolInfo struct {
 	// All nodes matched to this pool
 	nodes []*v1.Node
 	// All pods consume the pool
-	pods  []*v1.Pod
+	pods  map[types.UID]*v1.Pod
 
 	// Resources divided to the pool
 	deserved *Resource
@@ -36,6 +38,8 @@ func NewPoolInfo() *PoolInfo {
 		deserved: &Resource{},
 		used: &Resource{},
 		shared: &Resource{},
+
+		pods: make(map[types.UID]*v1.Pod),
 	}
 	return pi
 }
@@ -47,12 +51,38 @@ func (p *PoolInfo) AddNode(node *v1.Node) {
 	p.nodes = append(p.nodes, node)
 }
 
-func (p *PoolInfo) AddPod(pod *v1.Pod) error {
-	//res, non0CPU, non0Mem := calculateResource(pod)
-	//p.used.MilliCPU += res.MilliCPU
-	//p.used.
-	// TODO add task to pool
-	return nil
+func (p *PoolInfo) AddPod(pod *v1.Pod) {
+	res, _, _ := calculateResource(pod)
+	p.used.MilliCPU += res.MilliCPU
+	p.used.Memory += res.Memory
+	p.used.EphemeralStorage += res.EphemeralStorage
+	if p.used.ScalarResources == nil && len(res.ScalarResources) > 0 {
+		p.used.ScalarResources = map[v1.ResourceName]int64{}
+	}
+	for rName, rQuant := range res.ScalarResources {
+		p.used.ScalarResources[rName] += rQuant
+	}
+
+	p.pods[pod.UID] = pod
+
+}
+
+func (p *PoolInfo) RemovePod(pod *v1.Pod) error {
+	if _, ok := p.pods[pod.UID]; ok {
+		res, non0CPU, non0Mem := calculateResource(pod)
+		p.used.MilliCPU -= res.MilliCPU + non0CPU
+		p.used.Memory -= res.Memory + non0Mem
+		p.used.EphemeralStorage -= res.EphemeralStorage
+		if p.used.ScalarResources == nil && len(res.ScalarResources) > 0 {
+			p.used.ScalarResources = map[v1.ResourceName]int64{}
+		}
+		for rName, rQuant := range res.ScalarResources {
+			p.used.ScalarResources[rName] -= rQuant
+		}
+
+		delete(p.pods, pod.UID)
+	}
+	return fmt.Errorf("pod %s not exists in pool %s when remove pod", pod.Name, p.Name())
 }
 
 func (p *PoolInfo) GetPool() *v1alpha1.Pool {
@@ -120,6 +150,12 @@ func (p *PoolInfo) GetQuotaValue(name v1.ResourceName) int64 {
 	}
 }
 
+func (p *PoolInfo) Nodes() []*v1.Node {
+	if p == nil {
+		return nil
+	}
+	return p.nodes
+}
 func (p *PoolInfo) GetNodeSize() int {
 	if p == nil {
 		return 0
@@ -141,11 +177,39 @@ func (p *PoolInfo) Deserved() *Resource {
 	return p.deserved
 }
 
+func (p *PoolInfo) Used() *Resource {
+	if p == nil {
+		return &Resource{}
+	}
+	return p.used
+}
+
+func (p *PoolInfo) Shared() *Resource {
+	if p == nil {
+		return &Resource{}
+	}
+	return p.shared
+}
+
 func (p *PoolInfo) SetDeserved(resource *Resource) {
 	if p == nil {
 		return
 	}
 	p.deserved = resource
+}
+
+func (p *PoolInfo) SetUsed(resource *Resource) {
+	if p == nil {
+		return
+	}
+	p.used = resource
+}
+
+func (p *PoolInfo) SetShared(resource *Resource) {
+	if p == nil {
+		return
+	}
+	p.shared = resource
 }
 
 func (p *PoolInfo) SetDeservedResource(name v1.ResourceName, value int64) {
@@ -198,7 +262,7 @@ func (p *PoolInfo) MatchPoolNodes(nodes []*v1.Node) (*Resource, error) {
 		return &Resource{}, nil
 	}
 
-	if p == nil || p.pool.Name == DefaultPool ||
+	if p == nil ||
 		(p.pool.Spec.NodeSelector == nil &&
 			p.pool.Spec.SupportResources == nil) {
 		return &Resource{}, nil
@@ -218,9 +282,9 @@ func (p *PoolInfo) MatchPoolNodes(nodes []*v1.Node) (*Resource, error) {
 	return totalResource, nil
 }
 
-func (p *PoolInfo) IsDefaultPool() bool {
-	return p != nil && p.Name() == DefaultPool
-}
+//func (p *PoolInfo) IsDefaultPool() bool {
+//	return p != nil && p.Name() == DefaultPool
+//}
 
 func (p *PoolInfo) Weighted(name v1.ResourceName) bool {
 	if p == nil || p.pool == nil || p.pool.Spec.Weight == nil {

@@ -1,114 +1,82 @@
 package queue
 
 import (
-	"sync"
-	"time"
-
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
+	"sync"
 )
 
+const (
+	// DefaultPoolQueueName
+	DefaultPoolQueueName = "default"
+)
 type PoolQueue struct {
 	lock sync.RWMutex
 	cond sync.Cond
 
-	queues map[string]*util.Heap
+	// queues is queue map for pool name as key and podInfo heap as value
+
+	queues map[string]*PriorityQueue
 }
 
 // NewPoolQueue
-func NewPoolQueue() *PoolQueue {
+func NewPoolQueue(stopCh <-chan struct{}) *PoolQueue {
 	pq := &PoolQueue{
-		queues: make(map[string]*util.Heap),
+		queues: make(map[string]*PriorityQueue),
 	}
 	pq.cond.L = &pq.lock
+
+	// init queue for pod that not belong to any pool
+	pq.queues[DefaultPoolQueueName] = NewPriorityQueue(stopCh)
 
 	return pq
 }
 
 // AddPoolQ
-func (pq *PoolQueue) AddPoolQ(poolName string, q *util.Heap) {
+func (pq *PoolQueue) AddPoolQ(poolName string, q *PriorityQueue) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	if _, ok := pq.queues[poolName]; ok {
-		klog.Warning("Pool queue %s already exist!")
+		return nil
 	}
+
 	pq.queues[poolName] = q
+	return nil
 }
 
-func (pq *PoolQueue) AddIfNotPresent(poolName string, pod *v1.Pod) error {
+func (pq *PoolQueue) AddIfNotPresent(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
+	poolName := info.GetPodPoolName(pod)
+	q := pq.getPriorityQueue(poolName)
+	return q.AddIfNotPresent(pod)
+}
 
-	pInfo := newPodInfoWithTimestamp(pod)
-	for _, q := range pq.queues {
-		if _, exists, _ := q.Get(pInfo); exists {
-			return nil
-		}
+func (pq *PoolQueue) getPriorityQueue(poolName string) *PriorityQueue {
+	if q, ok := pq.queues[poolName]; ok {
+		return q
 	}
-
-	err := pq.getOrCreate(poolName).Add(pInfo)
-	if err == nil {
-		pq.cond.Broadcast()
-	}
-	return err
+	// if not found return default queue
+	return pq.queues[DefaultPoolQueueName]
 }
 
 // Delete deletes pod
-func (pq *PoolQueue) Delete(pod *v1.Pod) {
+func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	for _, q := range pq.queues {
-		if err := q.Delete(newPodInfoNoTimestamp(pod)); err == nil {
-			break
-		}
-	}
+	poolName := info.GetPodPoolName(pod)
+	q := pq.getPriorityQueue(poolName)
+	return q.Delete(pod)
 }
 
 // Update
 func (pq *PoolQueue) Update(oldPod, newPod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-
-	// if oldPod not nil, exists
-	if oldPod != nil {
-		oldPodInfo := newPodInfoNoTimestamp(oldPod)
-		for _, q := range pq.queues {
-			if oldPodInfo, exists, _ := q.Get(oldPodInfo); exists {
-				newPodInfo := newPodInfoNoTimestamp(newPod)
-				newPodInfo.timestamp = oldPodInfo.(*podInfo).timestamp
-				err := q.Update(newPodInfo)
-				return err
-			}
-		}
-	}
-
-	// if oldPod is not any of the queues
-	poolName := info.GetPodPoolName(newPod)
-	err := pq.getOrCreate(poolName).Add(newPodInfoWithTimestamp(newPod))
-	if err == nil {
-		pq.cond.Broadcast()
-	}
-	return err
-}
-
-func newPodInfoWithTimestamp(pod *v1.Pod) *podInfo {
-	return &podInfo{
-		pod: pod,
-		timestamp: time.Now(),
-	}
-}
-
-func (pq *PoolQueue) getOrCreate(poolName string) *util.Heap {
-	pq.lock.Lock()
-	defer pq.lock.Unlock()
-	q, ok := pq.queues[poolName]
-	if !ok {
-		q = util.NewHeap(podInfoKeyFunc, poolQueuePodPriorityComp(poolName))
-		pq.queues[poolName] = q
-	}
-	return q
+	poolName := info.GetPodPoolName(oldPod)
+	q := pq.getPriorityQueue(poolName)
+	return q.Update(oldPod, newPod)
 }
 
 // NumQueues return the len of queues
@@ -117,6 +85,11 @@ func (pq *PoolQueue) NumQueues() int {
 	defer pq.lock.Unlock()
 	return len(pq.queues)
 }
+
+
+
+
+
 
 func poolQueuePodPriorityComp(poolName string) util.LessFunc {
 	return func(podInfo1, podInfo2 interface{}) bool {

@@ -214,18 +214,19 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 		}
 	}
 
+	// start pool informer first
+	cc.AsInformerFactory.Start(stopCh)
+	// Calculate all pool's deserved resources after all cache synced before scheduling
+	cc.AsInformerFactory.WaitForCacheSync(stopCh)
+
 	// Start all informers.
 	go cc.PodInformer.Informer().Run(stopCh)
 	cc.InformerFactory.Start(stopCh)
 	// Wait for all caches to sync before scheduling.
 	cc.InformerFactory.WaitForCacheSync(stopCh)
+	sched.Cache().DeserveAllPools()
 
 	controller.WaitForCacheSync("scheduler", stopCh, cc.PodInformer.Informer().HasSynced)
-
-	cc.AsInformerFactory.Start(stopCh)
-	cc.AsInformerFactory.WaitForCacheSync(stopCh)
-	// Calculate all pool's deserved resources after all cache synced before scheduling
-	sched.Cache().DeserveAllPools()
 
 	// Prepare a reusable runCommand function.
 	run := func(ctx context.Context) {

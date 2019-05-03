@@ -1,23 +1,23 @@
 apiVersion: resource.aibee.cn/v1alpha1
 kind: Pool
 metadata:
-  name: test-pool1
+  name: prod-cpu-pool
 spec:
   nodeSelector:
     matchLabels:
-      gpu: "true"
+      prod-cpu: "true"
 
-  supportResources:
-    - "cpu"
+#  supportResources:
+#    - "gpu"
 
-  weight:
-    cpu: 2
-    nvidia.com/gpu: 0
+#  weight:
+#    cpu: 2
+#    nvidia.com/gpu: 0
 
 #  quota:
 #    cpu: "4"
 #    nvidia.com/gpu: "10"
-
+  priority: 10
   priorites:
     - name: "MostRequestedPriority"
       weight: 1
@@ -29,27 +29,64 @@ spec:
 apiVersion: resource.aibee.cn/v1alpha1
 kind: Pool
 metadata:
-  name: test-pool2
+  name: staging-cpu-pool
 spec:
   nodeSelector:
     matchLabels:
-      cpu: "true"
-
-#  supportResources:
-#    - "nvidia.com/gpu"
-
-  weight:
-    cpu: 1
-    nvidia.com/gpu: 1
-
-#  quota:
-#    cpu: "5"
-#    nvidia.com/gpu: "10"
-
-  priorites:
-    - name: "MostRequestedPriority"
-      weight: 1
-
+      staging-cpu: "true"
+  priority: 5
   disablePreemption: false
   disableBorrowing: false
   disableSharing: false
+---
+apiVersion: resource.aibee.cn/v1alpha1
+kind: Pool
+metadata:
+  name: prod-gpu-pool
+spec:
+  nodeSelector:
+    matchLabels:
+      prod-gpu: "true"
+  priority: 10
+  disablePreemption: false
+  disableBorrowing: false
+  disableSharing: false
+---
+apiVersion: resource.aibee.cn/v1alpha1
+kind: Pool
+metadata:
+  name: staging-gpu-pool
+spec:
+  nodeSelector:
+    matchLabels:
+      staging-gpu: "true"
+  priority: 5
+  disablePreemption: false
+  disableBorrowing: false
+  disableSharing: false
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-job
+spec:
+  parallelism: 4
+  template:
+    metadata:
+      name: test-job
+      annotations:
+        resource.aibee.cn/pool: staging-gpu-pool
+    spec:
+      schedulerName: default-scheduler
+      containers:
+        - name: pi
+          image: perl
+          command: ["perl"]
+          args: ["-Mbignum=bpi", "-wle", "print bpi(2000)"]
+          resources:
+            limits:
+              cpu: 100m
+            requests:
+              cpu: 100m
+      restartPolicy: Never
+  backoffLimit: 1

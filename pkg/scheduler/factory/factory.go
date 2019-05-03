@@ -221,6 +221,9 @@ type configFactory struct {
 	bindTimeoutSeconds int64
 	// queue for pods that need scheduling
 	podQueue internalqueue.SchedulingQueue
+
+	// queue for resource pool scheduling
+	poolQueue *internalqueue.PoolQueue
 }
 
 // ConfigFactoryArgs is a set arguments passed to NewConfigFactory.
@@ -263,6 +266,7 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 		client:                         args.Client,
 		podLister:                      schedulerCache,
 		podQueue:                       internalqueue.NewSchedulingQueue(stopEverything),
+		poolQueue:						internalqueue.NewPoolQueue(stopEverything),
 		poolLister:						args.PoolInformer.Lister(),
 		nodeLister:                     args.NodeInformer.Lister(),
 		pVLister:                       args.PvInformer.Lister(),

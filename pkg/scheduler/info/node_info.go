@@ -178,6 +178,23 @@ func (r *Resource) Add(rl v1.ResourceList) {
 	}
 }
 
+// Add is used to add the two resources
+func (r *Resource) Plus(rr *Resource) *Resource {
+	r.MilliCPU += rr.MilliCPU
+	r.Memory += rr.Memory
+	r.EphemeralStorage += rr.EphemeralStorage
+	r.AllowedPodNumber += rr.AllowedPodNumber
+
+	for rName, rQuant := range rr.ScalarResources {
+		if r.ScalarResources == nil {
+			r.ScalarResources = map[v1.ResourceName]int64{}
+		}
+		r.ScalarResources[rName] += rQuant
+	}
+
+	return r
+}
+
 // ResourceList returns a resource list of this resource.
 func (r *Resource) ResourceList() v1.ResourceList {
 	result := v1.ResourceList{

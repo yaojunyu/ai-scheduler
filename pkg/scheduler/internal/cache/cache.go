@@ -391,6 +391,29 @@ func (cache *schedulerCache) removePod(pod *v1.Pod) error {
 	return nil
 }
 
+// AddPodToPool
+func (cache *schedulerCache) addPodToPool(pod *v1.Pod) error {
+	pname := schedulerinfo.GetPodPoolName(pod)
+	pool, exists := cache.pools[pname]
+	if !exists {
+		return fmt.Errorf("pod %s pool %s not exists", pod.Name, pname)
+	}
+	pool.AddPod(pod)
+	return nil
+}
+
+func (cache *schedulerCache) updatePodInPool(oldPod, newPod *v1.Pod) error {
+	cache.removePodFromPool(oldPod)
+	return cache.addPodToPool(newPod)
+}
+
+func (cache *schedulerCache) removePodFromPool(pod *v1.Pod) error {
+	for _, p := range cache.pools {
+		p.RemovePod(pod)
+	}
+	return nil
+}
+
 func (cache *schedulerCache) AddPod(pod *v1.Pod) error {
 	key, err := schedulerinfo.GetPodKey(pod)
 	if err != nil {
@@ -399,6 +422,11 @@ func (cache *schedulerCache) AddPod(pod *v1.Pod) error {
 
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+
+	// add pod to pool
+	//if err = cache.addPodToPool(pod); err!= nil {
+	//	return err
+	//}
 
 	currState, ok := cache.podStates[key]
 	switch {
@@ -435,6 +463,11 @@ func (cache *schedulerCache) UpdatePod(oldPod, newPod *v1.Pod) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	// update pod in pool
+	//if err = cache.updatePodInPool(oldPod, newPod); err != nil {
+	//	return err
+	//}
+
 	currState, ok := cache.podStates[key]
 	switch {
 	// An assumed pod won't have Update/Remove event. It needs to have Add event
@@ -462,6 +495,11 @@ func (cache *schedulerCache) RemovePod(pod *v1.Pod) error {
 
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+
+	// remove pod to pool
+	//if err = cache.removePodFromPool(pod); err != nil {
+	//	return err
+	//}
 
 	currState, ok := cache.podStates[key]
 	switch {
@@ -729,43 +767,22 @@ func (cache *schedulerCache) DeserveAllPools() error {
 	}
 
 	// Deserve default pool first
-	ds := cache.deserveDefaultPool()
+	//ds := cache.deserveDefaultPool()
 	// Compute all allocatable resources of all nodes
 	totalRes := cache.calculateTotalResource()
-	remainRes := totalRes.Clone().Sub(ds)
+	//remainRes := totalRes.Clone().Sub(ds)
+	remainRes := totalRes.Clone()
 
 	// Deserve all pools' quota
-	cache.deserveQuotaPools(remainRes)
+	//cache.deserveQuotaPools(remainRes)
 
 	// Deserve all pools need match nodes
 	cache.deserveNeedMatchNodePools(remainRes)
 
 	// Deserve weighted pools
-	cache.deserveWeightedPools(remainRes)
+	//cache.deserveWeightedPools(remainRes)
 
-	for _, p := range cache.pools  {
-		klog.V(4).Infof("Pool %s detail: nodeSelector: %s, supportResources: %v, weight: %v, quota: %v",
-			p.Name(),
-			p.GetPool().Spec.NodeSelector,
-			p.GetPool().Spec.SupportResources,
-			p.GetPool().Spec.Weight,
-			p.GetPool().Spec.Quota)
-	}
-	for _, p := range cache.pools  {
-		klog.V(3).Infof("Deserved Pool %v: cpu(%d)=%d/%d, gpu(%d)=%d/%d, memory(%d)=%d/%d, node=%d/%d",
-			p.Name(),
-			p.GetPoolWeight()[v1.ResourceCPU],
-			p.Deserved().MilliCPU,
-			totalRes.MilliCPU,
-			p.GetPoolWeight()[schedulerinfo.ResourceGPU],
-			p.Deserved().ScalarResources[schedulerinfo.ResourceGPU],
-			totalRes.ScalarResources[schedulerinfo.ResourceGPU],
-			p.GetPoolWeight()[v1.ResourceMemory],
-			p.Deserved().Memory,
-			totalRes.Memory,
-			p.GetNodeSize(),
-			len(cache.nodes))
-	}
+	cache.printPools()
 
 	return nil
 }
@@ -784,7 +801,7 @@ func (cache *schedulerCache) calculateTotalResource() *schedulerinfo.Resource {
 	total := &schedulerinfo.Resource{}
 	for _, node := range cache.nodes {
 		rs := node.info.AllocatableResource()
-		total.Add(rs.ResourceList())
+		total.Plus(&rs)
 	}
 	return total
 }
@@ -795,9 +812,9 @@ func (cache *schedulerCache) calculateTotalWeights(resNames []v1.ResourceName) m
 		totalWeight[rn] = 0
 	}
 	for _, p := range cache.pools {
-		if p.IsDefaultPool() {
-			continue
-		}
+		//if p.IsDefaultPool() {
+		//	continue
+		//}
 		pw := p.GetPoolWeight()
 		for n, w := range pw {
 			if w < 0 {
@@ -832,7 +849,7 @@ func (cache *schedulerCache) calculateRatio(p *schedulerinfo.PoolInfo, rn v1.Res
 func (cache *schedulerCache) weightedPoolsSize(rn v1.ResourceName) int64 {
 	count := int64(0)
 	for _, pool := range cache.pools {
-		if !pool.HasQuota(rn) && !pool.IsDefaultPool() {
+		if !pool.HasQuota(rn) {
 			count++
 		}
 	}
@@ -840,29 +857,29 @@ func (cache *schedulerCache) weightedPoolsSize(rn v1.ResourceName) int64 {
 }
 
 // collectDefaultPool
-func (cache *schedulerCache) deserveDefaultPool() *schedulerinfo.Resource {
-	// calculate all pods not has pool name allocated in nodes
-	var deserved = &schedulerinfo.Resource{}
-	if _, ok := cache.pools[schedulerinfo.DefaultPool]; !ok {
-		return deserved
-	}
-	for _, nodeItem := range cache.nodes {
-		for _, pod := range nodeItem.info.Pods() {
-			if schedulerinfo.BelongToDefaultPool(pod) && schedulerinfo.AllocatedStatus(pod) {
-				deserved.Add(schedulerinfo.GetPodResourceRequest(pod).ResourceList())
-			}
-		}
-	}
-	cache.pools[schedulerinfo.DefaultPool].SetDeserved(deserved)
-	return deserved
-}
+//func (cache *schedulerCache) deserveDefaultPool() *schedulerinfo.Resource {
+//	// calculate all pods not has pool name allocated in nodes
+//	var deserved = &schedulerinfo.Resource{}
+//	if _, ok := cache.pools[schedulerinfo.DefaultPool]; !ok {
+//		return deserved
+//	}
+//	for _, nodeItem := range cache.nodes {
+//		for _, pod := range nodeItem.info.Pods() {
+//			if schedulerinfo.BelongToDefaultPool(pod) && schedulerinfo.AllocatedStatus(pod) {
+//				deserved.Plus(schedulerinfo.GetPodResourceRequestWithNonZeroContainer(pod))
+//			}
+//		}
+//	}
+//	cache.pools[schedulerinfo.DefaultPool].SetDeserved(deserved)
+//	return deserved
+//}
 
 func (cache *schedulerCache) deserveWeightedPools(remain *schedulerinfo.Resource) {
 	totalWeights := cache.calculateTotalWeights(remain.ResourceNames())
 	for _, p := range cache.pools {
-		if p.IsDefaultPool() {
-			continue
-		}
+		//if p.IsDefaultPool() {
+		//	continue
+		//}
 		for rn, tw := range totalWeights {
 			if !p.HasQuota(rn) && p.Weighted(rn) {
 				ratio := cache.calculateRatio(p, rn, tw)
@@ -930,27 +947,57 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 
 func (cache *schedulerCache) deserveNeedMatchNodePools(remain *schedulerinfo.Resource) {
 	for _, p := range cache.pools {
-		if p.IsDefaultPool() {
-			continue
-		}
+		//if p.IsDefaultPool() {
+		//	continue
+		//}
 		if p.NeedMatchNodeLabel() {
 			res, err := p.MatchPoolNodes(cache.getNodes())
+			// TODO check if nodes has intersection
 			if err != nil {
-				klog.Error("Failed match all nodes for pool: %v", p.Name())
+				klog.Error("Failed match nodes for pool: %v", p.Name())
 				return
 			}
-			for _, rn := range res.ResourceNames() {
-				if !p.HasQuota(rn) && !p.Weighted(rn) {
-					if res.GetValue(rn) > remain.GetValue(rn) {
-						p.SetDeservedResource(rn, remain.GetValue(rn))
-						remain.SetValue(rn, 0)
+
+			// compute deserved
+			p.SetDeserved(res)
+			//for _, rn := range res.ResourceNames() {
+			//	//if !p.HasQuota(rn) && !p.Weighted(rn) {
+			//		if res.GetValue(rn) > remain.GetValue(rn) {
+			//			p.SetDeservedResource(rn, remain.GetValue(rn))
+			//			remain.SetValue(rn, 0)
+			//		} else {
+			//			dsv := remain.GetValue(rn) - res.GetValue(rn)
+			//			p.SetDeservedResource(rn, res.GetValue(rn))
+			//			remain.SetValue(rn, dsv)
+			//		}
+			//	//}
+			//}
+
+			// compute used and shared
+			used := &schedulerinfo.Resource{}
+			shared := &schedulerinfo.Resource{}
+			for _, node := range p.Nodes() {
+				ni, ok := cache.nodes[node.Name]
+				if !ok {
+					klog.Errorf("error: node %s not found", node.Name)
+					continue
+				}
+				res := ni.info.RequestedResource()
+				used.Plus(&res)
+
+
+				for _, pod := range ni.info.Pods() {
+					if p.Name() != schedulerinfo.GetPodPoolName(pod) {
+						res := schedulerinfo.GetPodResourceRequestWithNonZeroContainer(pod)
+						shared.Plus(res)
+						shared.AllowedPodNumber+=1
 					} else {
-						dsv := remain.GetValue(rn) - res.GetValue(rn)
-						p.SetDeservedResource(rn, res.GetValue(rn))
-						remain.SetValue(rn, dsv)
+						used.AllowedPodNumber+=1
 					}
 				}
 			}
+			p.SetUsed(used)
+			p.SetShared(shared)
 		}
 	}
 }
@@ -968,10 +1015,50 @@ func (cache *schedulerCache) getNodes() []*v1.Node {
 }
 
 func (cache *schedulerCache) getPools() []interface{} {
-	pools := make([]interface{}, 0, len(cache.pools))
+	pools := make([]interface{}, len(cache.pools))
 	for _, p := range cache.pools {
 		pools = append(pools, p.GetPool())
 	}
 
 	return pools
 }
+
+func (cache *schedulerCache) printPools() {
+	totalRes := cache.calculateTotalResource()
+	var log = `Pool Details:`
+	for _, p := range cache.pools  {
+		detail := `
+------------------------------------------%s---------------------------------------------
+%-20s%-20s%-20s%-20s%-20s
+%-20s%-20d%-20d%-20d%-20d
+%-20s%-20d%-20d%-20d%-20d
+%-20s%-20d%-20d%-20d%-20d
+%-20s%-20d%-20d%-20d%-20d
+%-20s%-20d%-20v%-20v%-20d
+%-20s%-20d%-20d%-20d%-20d`
+		log += fmt.Sprintf(detail,
+			p.Name(),
+			"Resource(w)", "Deserved", "Used", "Shared", "Total",
+			fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Deserved().MilliCPU, p.Used().MilliCPU,
+			p.Shared().MilliCPU, totalRes.MilliCPU,
+
+			fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[schedulerinfo.ResourceGPU]),
+			p.Deserved().ScalarResources[schedulerinfo.ResourceGPU], p.Used().ScalarResources[schedulerinfo.ResourceGPU],
+			p.Shared().ScalarResources[schedulerinfo.ResourceGPU], totalRes.ScalarResources[schedulerinfo.ResourceGPU],
+
+			fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Deserved().Memory, p.Used().Memory,
+			p.Shared().Memory, totalRes.Memory,
+
+			fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]), p.Deserved().EphemeralStorage,
+			p.Used().EphemeralStorage, p.Shared().EphemeralStorage, totalRes.EphemeralStorage,
+
+			"node", p.GetNodeSize(), "-", "-", len(cache.nodes),
+
+			fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]), p.Deserved().AllowedPodNumber,
+			p.Used().AllowedPodNumber, p.Shared().AllowedPodNumber, totalRes.AllowedPodNumber,
+			)
+
+	}
+	klog.V(4).Infoln(log)
+}
+
