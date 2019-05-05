@@ -29,6 +29,7 @@ type SchedulingPoolQueue interface {
 
 	GetPoolQueueNameIfNotPresent(pod *v1.Pod) string
 	Close()
+	CloseQ(poolName string)
 }
 
 var _ = SchedulingPoolQueue(&PoolQueue{})
