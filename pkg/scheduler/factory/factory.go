@@ -126,6 +126,7 @@ type Config struct {
 	// SchedulingQueue holds pods to be scheduled
 	//SchedulingQueue internalqueue.SchedulingQueue
 	SchedulingQueue *internalqueue.PoolQueue
+	StartSchedulingQueue chan string
 }
 
 // PodPreemptor has methods needed to delete a pod and to update
@@ -486,6 +487,7 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		StopEverything:  c.StopEverything,
 		VolumeBinder:    c.volumeBinder,
 		SchedulingQueue: c.poolQueue,
+		StartSchedulingQueue: make(chan string, 10), // buffered chan, default size 10
 	}, nil
 }
 

@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: test-job3
+  name: test-job4
 spec:
   parallelism: 1
   template:
     metadata:
-      name: test-job3
+      name: test-job4
       annotations:
-        resource.aibee.cn/pool: staging-cpu-pool
+        resource.aibee.cn/pool: prod-gpu-pool
     spec:
       schedulerName: ai-scheduler
       containers:
@@ -18,10 +18,10 @@ spec:
           args: ["-Mbignum=bpi", "-wle", "print bpi(20000)"]
           resources:
             limits:
-              cpu: 2
+              cpu: 100m
               memory: 100M
             requests:
-              cpu: 2
+              cpu: 100m
               memory: 100M
       restartPolicy: Never
   backoffLimit: 1

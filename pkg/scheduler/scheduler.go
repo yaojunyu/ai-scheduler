@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"os"
 	"time"
 
@@ -253,12 +254,14 @@ func (sched *Scheduler) Run() {
 		return
 	}
 
-
-	for poolName := range sched.config.SchedulingQueue.Queues() {
-		go schedulePoolQueue(sched.scheduleOne, poolName, sched.config.StopEverything)
-	}
+	//go func() {
+	//	for {
+	//		poolName := <-sched.config.SchedulingQueue.StartCh()
+	//		go scheduleOnePool(sched.scheduleOne, poolName, sched.config.StopEverything)
+	//	}
+	//}()
 	//go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
-	//go wait.Until(sched.scheduleBatchOnce, 1, sched.config.StopEverything)
+	go wait.Until(sched.schedulePools, 0, sched.config.StopEverything)
 }
 
 // Config returns scheduler's config pointer. It is exposed for testing purposes.
@@ -595,7 +598,29 @@ func (sched *Scheduler)  scheduleOne(poolName string) {
 	}()
 }
 
-func schedulePoolQueue(f func(string), poolName string, stopCh <-chan struct{}) {
+func (sched *Scheduler) schedulePools() {
+	stopCh := sched.config.StopEverything
+	for {
+		select {
+		case <-stopCh:
+			return
+		default:
+		}
+		func() {
+			defer runtimeutil.HandleCrash()
+			poolName := <-sched.config.StartSchedulingQueue
+			go scheduleOnePool(sched.scheduleOne, poolName, stopCh)
+		}()
+
+		select {
+		case <-stopCh:
+			return
+		default:
+		}
+	}
+}
+
+func scheduleOnePool(f func(string), poolName string, stopCh <-chan struct{}) {
 	klog.V(3).Infof("Starting scheduling for pool %s", poolName)
 	for {
 		select {

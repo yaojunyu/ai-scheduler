@@ -910,6 +910,10 @@ func (cache *schedulerCache) DeserveAllPools() error {
 	return nil
 }
 
+func (cache *schedulerCache) PrintAllPools() {
+	cache.printPools()
+}
+
 func (cache *schedulerCache) calculateTotalQuota() *schedulerinfo.Resource {
 	var totalQuota = &schedulerinfo.Resource{}
 	for _, p := range cache.pools {

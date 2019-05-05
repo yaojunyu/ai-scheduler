@@ -1148,7 +1148,7 @@
   revision = "6b3d3b2d5666c5912bab8b7bf26bf50f75a8f887"
 
 [[projects]]
-  digest = "1:c5d855a16af8df0daef2aba764a18ff317bd7acb07c1979053c834d0b5af1ee4"
+  digest = "1:d720b09b6c177b2e02a618be1488df0aba9a26f3ac04b00b37895a0cc13cbaf7"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -1197,6 +1197,8 @@
     "pkg/fieldpath",
     "pkg/kubelet/types",
     "pkg/master/ports",
+    "pkg/scheduler/api",
+    "pkg/scheduler/api/v1",
     "pkg/security/apparmor",
     "pkg/serviceaccount",
     "pkg/util/configz",
@@ -1306,6 +1308,7 @@
     "k8s.io/apimachinery/pkg/util/validation/field",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/version",
+    "k8s.io/apimachinery/pkg/watch",
     "k8s.io/apiserver/pkg/authentication/authenticator",
     "k8s.io/apiserver/pkg/authorization/authorizer",
     "k8s.io/apiserver/pkg/endpoints/filters",
@@ -1319,6 +1322,8 @@
     "k8s.io/apiserver/pkg/util/feature",
     "k8s.io/apiserver/pkg/util/feature/testing",
     "k8s.io/apiserver/pkg/util/term",
+    "k8s.io/client-go/discovery",
+    "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/informers/apps/v1",
     "k8s.io/client-go/informers/core/v1",
@@ -1340,6 +1345,7 @@
     "k8s.io/client-go/tools/leaderelection",
     "k8s.io/client-go/tools/leaderelection/resourcelock",
     "k8s.io/client-go/tools/record",
+    "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/testing",
     "k8s.io/client-go/util/workqueue",
     "k8s.io/cloud-provider/volume/helpers",
@@ -1368,6 +1374,7 @@
     "k8s.io/kubernetes/pkg/controller/volume/persistentvolume",
     "k8s.io/kubernetes/pkg/features",
     "k8s.io/kubernetes/pkg/master/ports",
+    "k8s.io/kubernetes/pkg/scheduler/api/v1",
     "k8s.io/kubernetes/pkg/util/configz",
     "k8s.io/kubernetes/pkg/util/flag",
     "k8s.io/kubernetes/pkg/util/node",

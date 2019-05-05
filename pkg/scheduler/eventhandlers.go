@@ -98,11 +98,19 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 
 	if err := sched.config.SchedulerCache.AddPool(pool); err != nil {
 		klog.Errorf("scheduler cache AddPool failed: %v", err)
+		return
 	}
 
-	sched.Cache().DeserveAllPools()
+	if _, err := sched.config.SchedulingQueue.AddQueue(pool.Name, sched.config.StopEverything); err != nil {
+		klog.Error("scheduler queue AddQueue failed: %v", err)
+		return
+	}
 
-	sched.config.SchedulingQueue.AddQueue(pool.Name, sched.config.StopEverything)
+	sched.Cache().PrintAllPools()
+	// notify start scheduling queue
+	go func() {
+		sched.config.StartSchedulingQueue <- pool.Name
+	}()
 }
 
 func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
@@ -121,7 +129,7 @@ func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
 		klog.Errorf("scheduler cache UpdatePool failed: %v", err)
 	}
 
-	sched.Cache().DeserveAllPools()
+	sched.Cache().PrintAllPools()
 }
 
 func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
@@ -148,14 +156,17 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 	// cache with stale information which is based on snapshot of old cache.
 	if err := sched.config.SchedulerCache.RemovePool(pool); err != nil {
 		klog.Errorf("scheduler cache RemovePool failed: %v", err)
+		return
 	}
 
-	sched.Cache().DeserveAllPools()
+	sched.Cache().PrintAllPools()
 
-
-	if err := sched.config.SchedulingQueue.RemoveQueue(pool.Name); err == nil {
-		// TODO stop goroutine
+	if err := sched.config.SchedulingQueue.RemoveQueue(pool.Name); err != nil {
+		klog.Errorf("scheduler PoolQueue RemoveQueue failed: %v", err)
+		return
 	}
+	// TODO stop goroutine
+	sched.config.SchedulingQueue.CloseQ()
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {
@@ -168,7 +179,7 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.AddNode(node); err != nil {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
 	}
-	sched.Cache().DeserveAllPools()
+	sched.Cache().PrintAllPools()
 
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
@@ -215,7 +226,7 @@ func (sched *Scheduler) deleteNodeFromCache(obj interface{}) {
 		klog.Errorf("cannot convert to *v1.Node: %v", t)
 		return
 	}
-	//sched.Cache().DeserveAllPools()
+	//sched.Cache().PrintAllPools()
 
 	// NOTE: Updates must be written to scheduler cache before invalidating
 	// equivalence cache, because we could snapshot equivalence cache after the
@@ -277,7 +288,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.AddPod(pod); err != nil {
 		klog.Errorf("scheduler cache AddPod failed: %v", err)
 	}
-	sched.Cache().DeserveAllPools()
+	sched.Cache().PrintAllPools()
 
 	sched.config.SchedulingQueue.AssignedPodAdded(pod)
 }
@@ -293,7 +304,7 @@ func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
 		klog.Errorf("cannot convert newObj to *v1.Pod: %v", newObj)
 		return
 	}
-	sched.Cache().DeserveAllPools()
+	sched.Cache().PrintAllPools()
 
 	// NOTE: Updates must be written to scheduler cache before invalidating
 	// equivalence cache, because we could snapshot equivalence cache after the
@@ -332,7 +343,7 @@ func (sched *Scheduler) deletePodFromCache(obj interface{}) {
 		klog.Errorf("scheduler cache RemovePod failed: %v", err)
 	}
 
-	sched.Cache().DeserveAllPools()
+	sched.Cache().PrintAllPools()
 
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }

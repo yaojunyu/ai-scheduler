@@ -2,11 +2,12 @@ package queue
 
 import (
 	"fmt"
+	"sync"
+
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"sync"
 )
 
 type SchedulingPoolQueue interface {
@@ -38,6 +39,9 @@ type PoolQueue struct {
 
 	// queues is queue map for pool name as key and podInfo heap as value
 	queues map[string]SchedulingQueue
+
+	// startCh to start a goroutine for pool
+	//startCh chan string
 
 	//predicates               map[string]predicates.FitPredicate
 	//priorityMetaProducer     priorities.PriorityMetadataProducer
@@ -86,11 +90,10 @@ func (pq *PoolQueue) AddQueue(poolName string, stopCh <-chan struct{}) (Scheduli
 func (pq *PoolQueue) RemoveQueue(poolName string) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	if _, ok := pq.queues[poolName]; ok {
-		delete(pq.queues, poolName)
+	if _, ok := pq.queues[poolName]; !ok {
+		return fmt.Errorf("pool queue %v not found", poolName)
 	}
-
-	// TODO stop goroutine
+	delete(pq.queues, poolName)
 	return nil
 }
 
@@ -203,6 +206,17 @@ func (pq *PoolQueue) Close() {
 	for _, q := range pq.queues {
 		q.Close()
 	}
+}
+
+func (pq *PoolQueue) CloseQ(poolName string) {
+	pq.lock.Lock()
+	defer pq.lock.Unlock()
+	q, ok := pq.queues[poolName]
+	if !ok {
+		klog.Errorf("Error: pool queue %v not exists, close failed", poolName)
+		return
+	}
+	q.Close()
 }
 
 func (pq *PoolQueue) getPriorityQueue(poolName string) SchedulingQueue {

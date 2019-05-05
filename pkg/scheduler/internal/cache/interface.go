@@ -130,6 +130,9 @@ type Cache interface {
 
 	// DeserveAllPools compute all pools' deserved resources  quota
 	DeserveAllPools() error
+
+	// PrintAllPools print all pools detail
+    PrintAllPools()
 }
 
 // Snapshot is a snapshot of cache state
