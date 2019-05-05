@@ -782,3 +782,30 @@ func (r *Resource) ResourceNames() []v1.ResourceName {
 	}
 	return resNames
 }
+
+// Less checks whether a resource is less than other
+func (r *Resource) LessOrEqual(rr *Resource) bool {
+	if !(r.MilliCPU <= rr.MilliCPU && r.Memory <= rr.Memory &&
+		r.EphemeralStorage <= rr.EphemeralStorage &&
+		r.AllowedPodNumber <= rr.AllowedPodNumber) {
+		return false
+	}
+
+
+	if r.ScalarResources == nil {
+		return true
+	}
+
+	for rName, rQuant := range r.ScalarResources {
+		if rr.ScalarResources == nil {
+			return false
+		}
+
+		rrQuant := rr.ScalarResources[rName]
+		if rQuant > rrQuant {
+			return false
+		}
+	}
+
+	return true
+}

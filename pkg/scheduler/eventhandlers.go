@@ -100,7 +100,7 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 		klog.Errorf("scheduler cache AddPool failed: %v", err)
 	}
 
-	//sched.Cache().DeserveAllPools()
+	sched.Cache().DeserveAllPools()
 
 	sched.config.SchedulingQueue.AddQueue(pool.Name, sched.config.StopEverything)
 }
@@ -121,7 +121,7 @@ func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
 		klog.Errorf("scheduler cache UpdatePool failed: %v", err)
 	}
 
-	//sched.Cache().DeserveAllPools()
+	sched.Cache().DeserveAllPools()
 }
 
 func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
@@ -150,7 +150,7 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 		klog.Errorf("scheduler cache RemovePool failed: %v", err)
 	}
 
-	//sched.Cache().DeserveAllPools()
+	sched.Cache().DeserveAllPools()
 
 
 	if err := sched.config.SchedulingQueue.RemoveQueue(pool.Name); err == nil {
@@ -168,6 +168,7 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.AddNode(node); err != nil {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
 	}
+	sched.Cache().DeserveAllPools()
 
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
@@ -214,6 +215,8 @@ func (sched *Scheduler) deleteNodeFromCache(obj interface{}) {
 		klog.Errorf("cannot convert to *v1.Node: %v", t)
 		return
 	}
+	//sched.Cache().DeserveAllPools()
+
 	// NOTE: Updates must be written to scheduler cache before invalidating
 	// equivalence cache, because we could snapshot equivalence cache after the
 	// invalidation and then snapshot the cache itself. If the cache is
@@ -274,6 +277,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.AddPod(pod); err != nil {
 		klog.Errorf("scheduler cache AddPod failed: %v", err)
 	}
+	sched.Cache().DeserveAllPools()
 
 	sched.config.SchedulingQueue.AssignedPodAdded(pod)
 }
@@ -289,6 +293,7 @@ func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
 		klog.Errorf("cannot convert newObj to *v1.Pod: %v", newObj)
 		return
 	}
+	sched.Cache().DeserveAllPools()
 
 	// NOTE: Updates must be written to scheduler cache before invalidating
 	// equivalence cache, because we could snapshot equivalence cache after the
@@ -326,6 +331,8 @@ func (sched *Scheduler) deletePodFromCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.RemovePod(pod); err != nil {
 		klog.Errorf("scheduler cache RemovePod failed: %v", err)
 	}
+
+	sched.Cache().DeserveAllPools()
 
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }

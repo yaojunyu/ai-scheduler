@@ -96,6 +96,12 @@ type Cache interface {
 	// RemovePool removes overall information about pool
 	RemovePool(pool *v1alpha1.Pool) error
 
+	// Pools return the pools
+	Pools() map[string]*schedulerinfo.PoolInfo
+
+	// GetPool return pool by name
+	GetPool(poolName string) *schedulerinfo.PoolInfo
+
 	// AddNode adds overall information about node.
 	AddNode(node *v1.Node) error
 
@@ -120,7 +126,7 @@ type Cache interface {
 	Snapshot() *Snapshot
 
 	// NodeTree returns a node tree structure
-	NodeTree() *NodeTree
+	NodeTree(poolName string) *NodeTree
 
 	// DeserveAllPools compute all pools' deserved resources  quota
 	DeserveAllPools() error

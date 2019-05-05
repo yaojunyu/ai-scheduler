@@ -118,7 +118,7 @@ func AllocatedStatus(pod *v1.Pod) bool {
 }
 
 // GetPodResourceRequestWithNonZeroContainer
-func GetPodResourceRequestWithNonZeroContainer(pod *v1.Pod) *Resource {
+func GetPodResourceRequestWithoutNonZeroContainer(pod *v1.Pod) *Resource {
 	res, _, _ := calculateResource(pod)
 	result := res.Clone()
 	//result.MilliCPU += non0CPU
@@ -126,10 +126,11 @@ func GetPodResourceRequestWithNonZeroContainer(pod *v1.Pod) *Resource {
 	return result
 }
 
-func GetPodPoolName(pod *v1.Pod) string {
+func GetPodAnnotationsPoolName(pod *v1.Pod) string {
 	if pod == nil {
 		return ""
 	}
+
 	name, _ := pod.Annotations[v1alpha1.GroupNameAnnotationKey]
 	return name
 }

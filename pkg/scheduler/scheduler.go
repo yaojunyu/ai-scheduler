@@ -253,9 +253,9 @@ func (sched *Scheduler) Run() {
 		return
 	}
 
+
 	for poolName := range sched.config.SchedulingQueue.Queues() {
 		go schedulePoolQueue(sched.scheduleOne, poolName, sched.config.StopEverything)
-		//go wait.Until(sched.scheduleOne(poolName), 0, sched.config.StopEverything)
 	}
 	//go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
 	//go wait.Until(sched.scheduleBatchOnce, 1, sched.config.StopEverything)
@@ -283,7 +283,7 @@ func (sched *Scheduler) recordSchedulingFailure(poolName string, pod *v1.Pod, er
 // schedule implements the scheduling algorithm and returns the suggested result(host,
 // evaluated nodes number,feasible nodes number).
 func (sched *Scheduler) schedule(poolName string, pod *v1.Pod) (core.ScheduleResult, error) {
-	result, err := sched.config.Algorithm.Schedule(pod, sched.config.NodeLister)
+	result, err := sched.config.Algorithm.Schedule(poolName, pod, sched.config.NodeLister)
 	if err != nil {
 		pod = pod.DeepCopy()
 		sched.recordSchedulingFailure(poolName, pod, err, v1.PodReasonUnschedulable, err.Error())

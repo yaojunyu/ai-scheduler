@@ -481,7 +481,7 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		WaitForCacheSync: func() bool {
 			return cache.WaitForCacheSync(c.StopEverything, c.scheduledPodsHasSynced)
 		},
-		NextPod:         internalqueue.MakeNextPodFunc(c.poolQueue),
+		NextPod:         internalqueue.MakeNextPodFunc(c.poolQueue, c.schedulerCache),
 		Error:           MakeDefaultErrorFunc(c.client, podBackoff, c.poolQueue, c.schedulerCache, c.StopEverything),
 		StopEverything:  c.StopEverything,
 		VolumeBinder:    c.volumeBinder,

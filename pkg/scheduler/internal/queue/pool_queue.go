@@ -5,12 +5,8 @@ import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 	"sync"
-)
-
-const (
-	// DefaultPoolQueueName
-	DefaultPoolQueueName = "default"
 )
 
 type SchedulingPoolQueue interface {
@@ -30,6 +26,7 @@ type SchedulingPoolQueue interface {
 	PendingPods() []*v1.Pod
 	NominatedPodsForNode(nodeName string) []*v1.Pod
 
+	GetPoolQueueNameIfNotPresent(pod *v1.Pod) string
 	Close()
 }
 
@@ -60,7 +57,7 @@ func NewPoolQueue(stopCh <-chan struct{}) *PoolQueue {
 	pq.cond.L = &pq.lock
 
 	// init queue for pod that not belong to any pool
-	pq.queues[DefaultPoolQueueName] = NewSchedulingQueue(stopCh)
+	pq.queues[info.DefaultPoolName] = NewSchedulingQueue(pq.poolQueuePodPriorityComp(info.DefaultPoolName), stopCh)
 
 	return pq
 }
@@ -80,7 +77,7 @@ func (pq *PoolQueue) AddQueue(poolName string, stopCh <-chan struct{}) (Scheduli
 	defer pq.lock.Unlock()
 	q, ok := pq.queues[poolName]
 	if !ok {
-		q = NewSchedulingQueue(stopCh)
+		q = NewSchedulingQueue(pq.poolQueuePodPriorityComp(poolName), stopCh)
 		pq.queues[poolName] = q
 	}
 	return q, nil
@@ -100,15 +97,16 @@ func (pq *PoolQueue) RemoveQueue(poolName string) error {
 func(pq *PoolQueue) Add(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodPoolName(pod)
+	poolName := info.GetPodAnnotationsPoolName(pod)
 	q := pq.getPriorityQueue(poolName)
+	klog.Infof("add pod %v/%v to pool queue %v", pod.Namespace, pod.Name, poolName)
 	return q.Add(pod)
 }
 
 func (pq *PoolQueue) AddIfNotPresent(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodPoolName(pod)
+	poolName := info.GetPodAnnotationsPoolName(pod)
 	q := pq.getPriorityQueue(poolName)
 	return q.AddIfNotPresent(pod)
 }
@@ -117,7 +115,7 @@ func (pq *PoolQueue) AddIfNotPresent(pod *v1.Pod) error {
 func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodPoolName(pod)
+	poolName := info.GetPodAnnotationsPoolName(pod)
 	q := pq.getPriorityQueue(poolName)
 	return q.Delete(pod)
 }
@@ -126,7 +124,7 @@ func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 func (pq *PoolQueue) Update(oldPod, newPod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodPoolName(oldPod)
+	poolName := info.GetPodAnnotationsPoolName(oldPod)
 	q := pq.getPriorityQueue(poolName)
 	return q.Update(oldPod, newPod)
 }
@@ -165,7 +163,7 @@ func (pq *PoolQueue) MoveAllToActiveQueue() {
 func (pq *PoolQueue) AssignedPodAdded(pod *v1.Pod) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodPoolName(pod)
+	poolName := info.GetPodAnnotationsPoolName(pod)
 	q := pq.getPriorityQueue(poolName)
 	q.AssignedPodAdded(pod)
 }
@@ -173,7 +171,7 @@ func (pq *PoolQueue) AssignedPodAdded(pod *v1.Pod) {
 func (pq *PoolQueue) AssignedPodUpdated(pod *v1.Pod) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodPoolName(pod)
+	poolName := info.GetPodAnnotationsPoolName(pod)
 	q := pq.getPriorityQueue(poolName)
 	q.AssignedPodUpdated(pod)
 }
@@ -212,18 +210,20 @@ func (pq *PoolQueue) getPriorityQueue(poolName string) SchedulingQueue {
 		return q
 	}
 	// if not found return default queue
-	return pq.queues[DefaultPoolQueueName]
+	klog.Warningf("Warning: queue for pool %v not found, use default queue", poolName)
+	return pq.queues[info.DefaultPoolName]
 }
 
-func poolQueuePodPriorityComp(poolName string) util.LessFunc {
+// poolQueuePodPriorityComp task has same pool name will get higher priority
+func (pq *PoolQueue) poolQueuePodPriorityComp(poolName string) util.LessFunc {
 	return func(podInfo1, podInfo2 interface{}) bool {
 		pInfo1 := podInfo1.(*podInfo)
 		pInfo2 := podInfo2.(*podInfo)
 		prio1 := util.GetPodPriority(pInfo1.pod)
 		prio2 := util.GetPodPriority(pInfo2.pod)
 
-		pn1 := info.GetPodPoolName(pInfo1.pod)
-		pn2 := info.GetPodPoolName(pInfo2.pod)
+		pn1 := pq.GetPoolQueueNameIfNotPresent(pInfo1.pod)
+		pn2 := pq.GetPoolQueueNameIfNotPresent(pInfo2.pod)
 
 		if pn1 == poolName && pn2 == poolName {
 			return (prio1 > prio2) || (prio1 == prio2 &&
@@ -238,4 +238,13 @@ func poolQueuePodPriorityComp(poolName string) util.LessFunc {
 				pInfo1.timestamp.Before(pInfo2.timestamp))
 		}
 	}
+}
+
+// getPoolQueueNameIfNotPresent return pool name by pod annotations, if not found return default name
+func (pq *PoolQueue) GetPoolQueueNameIfNotPresent(pod *v1.Pod) string {
+	poolName := info.GetPodAnnotationsPoolName(pod)
+	if _, ok := pq.queues[poolName]; ok {
+		return poolName
+	}
+	return info.DefaultPoolName
 }

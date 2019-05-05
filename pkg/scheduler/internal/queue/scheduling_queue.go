@@ -36,6 +36,8 @@ import (
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,9 +93,9 @@ type SchedulingQueue interface {
 
 // NewSchedulingQueue initializes a new scheduling queue. If pod priority is
 // enabled a priority queue is returned. If it is disabled, a FIFO is returned.
-func NewSchedulingQueue(stop <-chan struct{}) SchedulingQueue {
+func NewSchedulingQueue(activeQComp util.LessFunc, stop <-chan struct{}) SchedulingQueue {
 	if util.PodPriorityEnabled() {
-		return NewPriorityQueue(stop)
+		return NewPriorityQueue(activeQComp, stop)
 	}
 	return NewFIFO()
 }
@@ -286,12 +288,12 @@ func activeQComp(podInfo1, podInfo2 interface{}) bool {
 }
 
 // NewPriorityQueue creates a PriorityQueue object.
-func NewPriorityQueue(stop <-chan struct{}) *PriorityQueue {
-	return NewPriorityQueueWithClock(stop, util.RealClock{})
+func NewPriorityQueue(activeQComp util.LessFunc, stop <-chan struct{}) *PriorityQueue {
+	return NewPriorityQueueWithClock(activeQComp, stop, util.RealClock{})
 }
 
 // NewPriorityQueueWithClock creates a PriorityQueue which uses the passed clock for time.
-func NewPriorityQueueWithClock(stop <-chan struct{}, clock util.Clock) *PriorityQueue {
+func NewPriorityQueueWithClock(activeQComp util.LessFunc, stop <-chan struct{}, clock util.Clock) *PriorityQueue {
 	pq := &PriorityQueue{
 		clock:            clock,
 		stop:             stop,
@@ -901,17 +903,47 @@ func newNominatedPodMap() *nominatedPodMap {
 
 // MakeNextPodFunc returns a function to retrieve the next pod from a given
 // scheduling queue
-func MakeNextPodFunc(queue SchedulingPoolQueue) func(string) *v1.Pod {
+func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) func(string) *v1.Pod {
 	return func(poolName string) *v1.Pod {
-		q, err := queue.GetQueue(poolName)
+		q, err := queues.GetQueue(poolName)
 		if err != nil {
 			klog.Errorf("Error while getting poolQueue %s: %v", poolName, err)
 			return nil
 		}
+
+		//for pod, err := q.Pop(); pod
 		pod, err := q.Pop()
-		if err == nil {
-			klog.V(4).Infof("About to try and schedule pod %v/%v", pod.Namespace, pod.Name)
-			return pod
+		for err == nil {
+			klog.V(4).Infof("About to try and schedule pod %v/%v in pool queue %v", pod.Namespace, pod.Name, poolName)
+
+			// TODO if the pool has not enough resources then borrows other pool
+
+			if !checkResourceIfEnough(poolName, pod, queues, schedulerCache) {
+				selfPoolName := queues.GetPoolQueueNameIfNotPresent(pod)
+				if poolName == selfPoolName {
+					// borrow other pool
+					err := borrowFromOtherPool(poolName, pod, queues, schedulerCache)
+					if err == nil {
+						pod, err = q.Pop()
+					} else {
+						klog.Warningf("Borrow failed: %v", err)
+						return pod
+					}
+				} else {
+					// reclaim from pool
+					err := reclaimFromPool(poolName, selfPoolName, pod, queues)
+					if err == nil {
+						pod, err = q.Pop()
+					} else {
+						return pod
+					}
+				}
+			} else {
+				klog.V(4).Infof("Has enough resources for pod %v/%v in pool queue %v",
+					pod.Namespace, pod.Name, poolName)
+				return pod
+			}
+
 		}
 		klog.Errorf("Error while retrieving next pod from scheduling queue: %v", err)
 		return nil
@@ -920,4 +952,53 @@ func MakeNextPodFunc(queue SchedulingPoolQueue) func(string) *v1.Pod {
 
 func podInfoKeyFunc(obj interface{}) (string, error) {
 	return cache.MetaNamespaceKeyFunc(obj.(*podInfo).pod)
+}
+
+func checkResourceIfEnough(poolName string, pod *v1.Pod, queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) bool {
+	res := info.GetPodResourceRequestWithoutNonZeroContainer(pod)
+	//q, err := queues.GetQueue(poolName)
+	poolInfo := schedulerCache.GetPool(poolName)
+	return res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Deserved())
+}
+
+func borrowFromOtherPool(poolName string, pod *v1.Pod, queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) error {
+	// TODO consider priority of pool and pool idle size
+	for _, poolInfo := range schedulerCache.Pools() {
+		if poolName != poolInfo.Name() {
+			res := info.GetPodResourceRequestWithoutNonZeroContainer(pod)
+			if res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Deserved()) {
+				q, err := queues.GetQueue(poolInfo.Name())
+				if err != nil {
+					return err
+				}
+				if err := q.AddIfNotPresent(pod); err != nil {
+					return err
+				} else {
+					klog.V(4).Infof("Borrow resources form pool '%v' by pod %v/%v in pool queue %v",
+						poolInfo.Name(), pod.Namespace, pod.Name, poolName)
+					return nil
+				}
+			}
+		}
+	}
+	return fmt.Errorf("not any pools can borrow resources for %v/%v", pod.Namespace, pod.Name)
+}
+
+func reclaimFromPool(poolName, selfPoolName string, pod *v1.Pod, queues SchedulingPoolQueue) error {
+	if poolName == selfPoolName {
+		return nil
+	}
+	q, err := queues.GetQueue(poolName)
+	if err != nil {
+		return err
+	}
+	err = q.Delete(pod)
+	if err != nil {
+		return err
+	}
+	q, err = queues.GetQueue(selfPoolName)
+	if err != nil {
+		return err
+	}
+	return q.AddIfNotPresent(pod)
 }
