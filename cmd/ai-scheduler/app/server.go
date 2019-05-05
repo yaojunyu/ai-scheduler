@@ -224,7 +224,6 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 	cc.InformerFactory.Start(stopCh)
 	// Wait for all caches to sync before scheduling.
 	cc.InformerFactory.WaitForCacheSync(stopCh)
-	sched.Cache().DeserveAllPools()
 
 	controller.WaitForCacheSync("scheduler", stopCh, cc.PodInformer.Informer().HasSynced)
 

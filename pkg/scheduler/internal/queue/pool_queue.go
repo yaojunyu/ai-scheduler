@@ -102,8 +102,11 @@ func(pq *PoolQueue) Add(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	poolName := info.GetPodAnnotationsPoolName(pod)
-	q := pq.getPriorityQueue(poolName)
-	klog.Infof("add pod %v/%v to pool queue %v", pod.Namespace, pod.Name, poolName)
+	q, n, err := pq.getPriorityQueue(poolName)
+	if err != nil {
+		return err
+	}
+	klog.V(4).Infof("Add pod %v/%v to pool queue '%v'", pod.Namespace, pod.Name, n)
 	return q.Add(pod)
 }
 
@@ -111,7 +114,11 @@ func (pq *PoolQueue) AddIfNotPresent(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	poolName := info.GetPodAnnotationsPoolName(pod)
-	q := pq.getPriorityQueue(poolName)
+	q, n, err := pq.getPriorityQueue(poolName)
+	if err != nil {
+		return err
+	}
+	klog.V(4).Infof("AddIfNotPresent pod %v/%v to pool queue '%v'", pod.Namespace, pod.Name, n)
 	return q.AddIfNotPresent(pod)
 }
 
@@ -120,7 +127,11 @@ func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	poolName := info.GetPodAnnotationsPoolName(pod)
-	q := pq.getPriorityQueue(poolName)
+	q, n, err := pq.getPriorityQueue(poolName)
+	if err != nil {
+		return err
+	}
+	klog.V(4).Infof("Delete pod %v/%v form pool queue '%v'", pod.Namespace, pod.Name, n)
 	return q.Delete(pod)
 }
 
@@ -129,7 +140,12 @@ func (pq *PoolQueue) Update(oldPod, newPod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	poolName := info.GetPodAnnotationsPoolName(oldPod)
-	q := pq.getPriorityQueue(poolName)
+	q, n, err := pq.getPriorityQueue(poolName)
+	if err != nil {
+		return err
+	}
+	klog.V(4).Infof("Update pod from %v/%v to %v/%v in pool queue '%v'",
+		oldPod.Namespace, oldPod.Name, newPod.Namespace, newPod.Name, n)
 	return q.Update(oldPod, newPod)
 }
 
@@ -168,7 +184,11 @@ func (pq *PoolQueue) AssignedPodAdded(pod *v1.Pod) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	poolName := info.GetPodAnnotationsPoolName(pod)
-	q := pq.getPriorityQueue(poolName)
+	q, _, err := pq.getPriorityQueue(poolName)
+	if err != nil {
+		klog.Error("Failed getting queue %v when AssignedPodAdded", poolName)
+		return
+	}
 	q.AssignedPodAdded(pod)
 }
 
@@ -176,14 +196,18 @@ func (pq *PoolQueue) AssignedPodUpdated(pod *v1.Pod) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	poolName := info.GetPodAnnotationsPoolName(pod)
-	q := pq.getPriorityQueue(poolName)
+	q, _, err := pq.getPriorityQueue(poolName)
+	if err != nil {
+		klog.Error("Failed getting queue %v when AssignedPodUpdated", poolName)
+		return
+	}
 	q.AssignedPodUpdated(pod)
 }
 
 func (pq *PoolQueue) PendingPods() []*v1.Pod {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	result := []*v1.Pod{}
+	var result []*v1.Pod
 	for _, q := range pq.queues {
 		result = append(result, q.PendingPods()...)
 	}
@@ -193,7 +217,7 @@ func (pq *PoolQueue) PendingPods() []*v1.Pod {
 func (pq *PoolQueue) NominatedPodsForNode(nodeName string) []*v1.Pod {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	result := []*v1.Pod{}
+	var result []*v1.Pod
 	for _, q := range pq.queues {
 		// TODO remove the same pods
 		result = append(result, q.NominatedPodsForNode(nodeName)...)
@@ -220,13 +244,17 @@ func (pq *PoolQueue) CloseQ(poolName string) {
 	q.Close()
 }
 
-func (pq *PoolQueue) getPriorityQueue(poolName string) SchedulingQueue {
+func (pq *PoolQueue) getPriorityQueue(poolName string) (SchedulingQueue, string, error) {
 	if q, ok := pq.queues[poolName]; ok {
-		return q
+		return q, poolName, nil
 	}
 	// if not found return default queue
 	klog.Warningf("Warning: queue for pool %v not found, use default queue", poolName)
-	return pq.queues[info.DefaultPoolName]
+	q, ok := pq.queues[info.DefaultPoolName]
+	if ok {
+		return q, info.DefaultPoolName, nil
+	}
+	return nil, "", fmt.Errorf("build-in default pool queue not found")
 }
 
 // poolQueuePodPriorityComp task has same pool name will get higher priority

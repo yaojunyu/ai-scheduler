@@ -27,6 +27,7 @@ limitations under the License.
 package queue
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -50,6 +51,9 @@ import (
 var (
 	queueClosed = "scheduling queue is closed"
 )
+
+// used to check error to stop scheduling goroutine
+var PriorityQueueClosedError = errors.New(queueClosed)
 
 // If the pod stays in unschedulableQ longer than the unschedulableQTimeInterval,
 // the pod will be moved from unschedulableQ to activeQ.
@@ -518,7 +522,7 @@ func (p *PriorityQueue) Pop() (*v1.Pod, error) {
 		// When Close() is called, the p.closed is set and the condition is broadcast,
 		// which causes this loop to continue and return from the Pop().
 		if p.closed {
-			return nil, fmt.Errorf(queueClosed)
+			return nil, PriorityQueueClosedError
 		}
 		p.cond.Wait()
 	}
@@ -901,14 +905,16 @@ func newNominatedPodMap() *nominatedPodMap {
 	}
 }
 
+type PoolDeletedError error
+
 // MakeNextPodFunc returns a function to retrieve the next pod from a given
 // scheduling queue
-func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) func(string) *v1.Pod {
-	return func(poolName string) *v1.Pod {
+func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) func(string) (*v1.Pod, error) {
+	return func(poolName string) (*v1.Pod, error) {
 		q, err := queues.GetQueue(poolName)
 		if err != nil {
 			klog.Errorf("Error while getting poolQueue %s: %v", poolName, err)
-			return nil
+			return nil, err
 		}
 
 		//for pod, err := q.Pop(); pod
@@ -916,8 +922,7 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 		for err == nil {
 			klog.V(4).Infof("About to try and schedule pod %v/%v in pool queue %v", pod.Namespace, pod.Name, poolName)
 
-			// TODO if the pool has not enough resources then borrows other pool
-
+			// if the pool has not enough resources then borrows other pool
 			if !checkResourceIfEnough(poolName, pod, queues, schedulerCache) {
 				selfPoolName := queues.GetPoolQueueNameIfNotPresent(pod)
 				if poolName == selfPoolName {
@@ -927,7 +932,7 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 						pod, err = q.Pop()
 					} else {
 						klog.Warningf("Borrow failed: %v", err)
-						return pod
+						return pod, err
 					}
 				} else {
 					// reclaim from pool
@@ -935,18 +940,18 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 					if err == nil {
 						pod, err = q.Pop()
 					} else {
-						return pod
+						return pod, err
 					}
 				}
 			} else {
 				klog.V(4).Infof("Has enough resources for pod %v/%v in pool queue %v",
 					pod.Namespace, pod.Name, poolName)
-				return pod
+				return pod, err
 			}
 
 		}
 		klog.Errorf("Error while retrieving next pod from scheduling queue: %v", err)
-		return nil
+		return nil, err
 	}
 }
 

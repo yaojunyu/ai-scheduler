@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: test-job4
+  name: test-job5
 spec:
   parallelism: 1
   template:
     metadata:
-      name: test-job4
+      name: test-job5
       annotations:
-        resource.aibee.cn/pool: prod-gpu-pool
+        resource.aibee.cn/pool: prod-cpu-pool
     spec:
       schedulerName: ai-scheduler
       containers:

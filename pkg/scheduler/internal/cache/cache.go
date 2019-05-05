@@ -645,7 +645,12 @@ func (cache *schedulerCache) addToDefaultPool(poolInfo *schedulerinfo.PoolInfo) 
 		return fmt.Errorf("build-in default pool not exists in scheduler cache")
 	}
 
-	return defaultPoolInfo.AddNodeInfos(cache.getNodeInfos(poolInfo.Name()))
+	for _, ni := range cache.getNodeInfos(poolInfo.Name()) {
+		cache.nodeTrees[schedulerinfo.DefaultPoolName].addNode(ni.Node())
+		defaultPoolInfo.AddNodeInfo(ni)
+	}
+	//return defaultPoolInfo.AddNodeInfos(cache.getNodeInfos(poolInfo.Name()))
+	return nil
 }
 
 func (cache *schedulerCache) subFromDefaultPool(poolInfo *schedulerinfo.PoolInfo) error {
@@ -656,7 +661,13 @@ func (cache *schedulerCache) subFromDefaultPool(poolInfo *schedulerinfo.PoolInfo
 	if !ok {
 		return fmt.Errorf("build-in default pool not exists in scheduler cache")
 	}
-	return defaultPoolInfo.RemoveNodeInfos(cache.getNodeInfos(poolInfo.Name()))
+
+	for _, ni := range cache.getNodeInfos(poolInfo.Name()) {
+		cache.nodeTrees[schedulerinfo.DefaultPoolName].removeNode(ni.Node())
+		defaultPoolInfo.RemoveNodeInfo(ni)
+	}
+	//return defaultPoolInfo.RemoveNodeInfos(cache.getNodeInfos(poolInfo.Name()))
+	return nil
 }
 
 func (cache *schedulerCache) getPool(poolName string) (*schedulerinfo.PoolInfo, error) {
@@ -685,11 +696,7 @@ func (cache *schedulerCache) AddNode(node *v1.Node) error {
 	//cache.nodeTree.AddNode(node)
 	poolName := cache.matchPoolForNode(node)
 	cache.nodeTrees[poolName].AddNode(node)
-	poolInfo, ok := cache.pools[poolName]
-	if !ok {
-		return fmt.Errorf("pool %v does not exist in scheduler cache", poolName)
-	}
-	poolInfo.AddNode(node)
+	cache.pools[poolName].AddNode(node)
 
 	cache.addNodeImageStates(node, n.info)
 	return n.info.SetNode(node)
@@ -775,6 +782,7 @@ func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
 	//cache.nodeTree.RemoveNode(node)
 	poolName := cache.matchPoolForNode(node)
 	cache.nodeTrees[poolName].RemoveNode(node)
+	cache.pools[poolName].RemoveNode(node)
 	cache.removeNodeImageStates(node)
 	return nil
 }
@@ -873,6 +881,8 @@ func (cache *schedulerCache) expirePod(key string, ps *podState) error {
 }
 
 func (cache *schedulerCache) NodeTree(poolName string) *NodeTree {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
 	return cache.nodeTrees[poolName]
 }
 
@@ -883,6 +893,7 @@ func (cache *schedulerCache) NodeTree(poolName string) *NodeTree {
 // When quota deserved must skip weighted deserve.
 // weight pool deserved only when has non-zero remain resources.
 // deserve weighted resources only total weight great than 0.
+// DEPRECATED
 func (cache *schedulerCache) DeserveAllPools() error {
 	if cache.nodes == nil || len(cache.nodes) == 0 {
 		klog.Warning("Not any nodes cached, will not deserve pools")
@@ -1141,8 +1152,8 @@ func (cache *schedulerCache) getNodes() []*v1.Node {
 }
 
 func (cache *schedulerCache) getNodeInfos(poolName string) []*schedulerinfo.NodeInfo {
-	var result []*schedulerinfo.NodeInfo
 	nt, ok := cache.nodeTrees[poolName]
+	result := make([]*schedulerinfo.NodeInfo, 0, nt.numNodes)
 	if !ok {
 		klog.Errorf("Error: nodeTrees not exists for pool %v", poolName)
 		return nil
@@ -1196,10 +1207,6 @@ func (cache *schedulerCache) printPools() {
 		if p.Name() == "" {
 			poolName = "Default"
 		}
-		//half := len(poolName)/2
-		//repeat := 50 - half
-		//poolName = strings.Repeat("=", repeat) + poolName + strings.Repeat("=", 100-repeat-len(poolName))
-
 		log += fmt.Sprintf(detail,
 			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Deserved().MilliCPU, p.Used().MilliCPU,
 			p.Shared().MilliCPU, totalRes.MilliCPU,
@@ -1214,7 +1221,7 @@ func (cache *schedulerCache) printPools() {
 			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]), p.Deserved().EphemeralStorage,
 			p.Used().EphemeralStorage, p.Shared().EphemeralStorage, totalRes.EphemeralStorage,
 
-			"", "nodes", cache.nodeTrees[p.Name()].numNodes, "-", "-", len(cache.nodes),
+			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/cache.NodeTree(p.Name()).numNodes, "-", "-", len(cache.nodes),
 
 			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]), p.Deserved().AllowedPodNumber,
 			p.Used().AllowedPodNumber, p.Shared().AllowedPodNumber, totalRes.AllowedPodNumber,

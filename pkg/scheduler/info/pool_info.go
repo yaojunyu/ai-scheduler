@@ -5,6 +5,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 const (
 	// ResourceGPU need to follow https://github.com/NVIDIA/k8s-device-plugin/blob/66a35b71ac4b5cbfb04714678b548bd77e5ba719/server.go#L20
@@ -18,8 +19,8 @@ type PoolInfo struct {
 	name string
 	pool *v1alpha1.Pool
 
-	// All nodes matched to this pool
-	//nodes []*v1.Node
+	// All nodes matched to this pool, it's a node name set
+	nodes sets.String
 
 	// Resources divided to the pool
 	deserved *Resource
@@ -37,6 +38,7 @@ func NewPoolInfo() *PoolInfo {
 		shared: &Resource{},
 
 		//pods: make(map[types.UID]*v1.Pod),
+		nodes: sets.NewString(),
 	}
 	return pi
 }
@@ -47,6 +49,7 @@ func (p *PoolInfo) AddNode(node *v1.Node) error {
 		return nil
 	}
 	p.deserved.Add(node.Status.Allocatable)
+	p.nodes.Insert(node.Name)
 	return nil
 }
 
@@ -56,6 +59,7 @@ func (p *PoolInfo) RemoveNode(node *v1.Node) error {
 		return nil
 	}
 	p.deserved.Sub(NewResource(node.Status.Allocatable))
+	p.nodes.Delete(node.Name)
 	return nil
 }
 
@@ -65,6 +69,8 @@ func (p *PoolInfo) UpdateNode(oldNode *v1.Node, newNode *v1.Node) error {
 	}
 	p.RemoveNode(oldNode)
 	p.AddNode(newNode)
+	p.nodes.Delete(oldNode.Name)
+	p.nodes.Insert(newNode.Name)
 	return nil
 }
 
@@ -117,6 +123,7 @@ func (p *PoolInfo) AddNodeInfo(node *NodeInfo) error {
 		return nil
 	}
 	p.deserved.Plus(node.allocatableResource)
+	p.nodes.Insert(node.Node().Name)
 	for _, pod := range node.pods {
 		p.AddPod(pod)
 	}
@@ -129,31 +136,32 @@ func (p *PoolInfo) RemoveNodeInfo(node *NodeInfo) error {
 		return nil
 	}
 	p.deserved.Sub(node.allocatableResource)
+	p.nodes.Delete(node.Node().Name)
 	for _, pod := range node.pods {
 		p.RemovePod(pod)
 	}
 	return nil
 }
 
-func (p *PoolInfo) AddNodeInfos(nodes []*NodeInfo) error {
-	if nodes == nil || len(nodes) == 0 {
-		return nil
-	}
-	for _, node := range nodes {
-		p.AddNodeInfo(node)
-	}
-	return nil
-}
-
-func (p *PoolInfo) RemoveNodeInfos(nodes []*NodeInfo) error {
-	if nodes == nil || len(nodes) == 0 {
-		return nil
-	}
-	for _, node := range nodes {
-		p.RemoveNodeInfo(node)
-	}
-	return nil
-}
+//func (p *PoolInfo) AddNodeInfos(nodes []*NodeInfo) error {
+//	if nodes == nil || len(nodes) == 0 {
+//		return nil
+//	}
+//	for _, node := range nodes {
+//		p.AddNodeInfo(node)
+//	}
+//	return nil
+//}
+//
+//func (p *PoolInfo) RemoveNodeInfos(nodes []*NodeInfo) error {
+//	if nodes == nil || len(nodes) == 0 {
+//		return nil
+//	}
+//	for _, node := range nodes {
+//		p.RemoveNodeInfo(node)
+//	}
+//	return nil
+//}
 
 // SetPool sets the overall pool information
 func (p *PoolInfo) SetPool(pool *v1alpha1.Pool) error {
@@ -218,12 +226,12 @@ func (p *PoolInfo) GetQuotaValue(name v1.ResourceName) int64 {
 //	}
 //	return p.nodes
 //}
-//func (p *PoolInfo) GetNodeSize() int {
-//	if p == nil {
-//		return 0
-//	}
-//	return p.nodeTree.NumNodes()
-//}
+func (p *PoolInfo) NumNodes() int {
+	if p == nil {
+		return 0
+	}
+	return p.nodes.Len()
+}
 
 func (p *PoolInfo) Name() string {
 	if p == nil || p.pool == nil {

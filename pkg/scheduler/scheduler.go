@@ -19,6 +19,8 @@ package scheduler
 import (
 	"errors"
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"os"
@@ -455,22 +457,22 @@ func (sched *Scheduler) bind(poolName string, assumed *v1.Pod, b *v1.Binding) er
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
-func (sched *Scheduler)  scheduleOne(poolName string) {
+func (sched *Scheduler)  scheduleOne(poolName string) error {
 	plugins := sched.config.PluginSet
 	// Remove all plugin context data at the beginning of a scheduling cycle.
 	if plugins.Data().Ctx != nil {
 		plugins.Data().Ctx.Reset()
 	}
 
-	pod := sched.config.NextPod(poolName)
+	pod, err := sched.config.NextPod(poolName)
 	// pod could be nil when schedulerQueue is closed
 	if pod == nil {
-		return
+		return err
 	}
 	if pod.DeletionTimestamp != nil {
 		sched.config.Recorder.Eventf(pod, v1.EventTypeWarning, "FailedScheduling", "skip schedule deleting pod: %v/%v", pod.Namespace, pod.Name)
 		klog.V(3).Infof("Skip schedule deleting pod: %v/%v", pod.Namespace, pod.Name)
-		return
+		return err
 	}
 
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v", pod.Namespace, pod.Name)
@@ -504,7 +506,7 @@ func (sched *Scheduler)  scheduleOne(poolName string) {
 			klog.Errorf("error selecting node for pod: %v", err)
 			metrics.PodScheduleErrors.Inc()
 		}
-		return
+		return err
 	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DeprecatedSchedulingAlgorithmLatency.Observe(metrics.SinceInMicroseconds(start))
@@ -523,7 +525,7 @@ func (sched *Scheduler)  scheduleOne(poolName string) {
 	if err != nil {
 		klog.Errorf("error assuming volumes: %v", err)
 		metrics.PodScheduleErrors.Inc()
-		return
+		return err
 	}
 
 	// Run "reserve" plugins.
@@ -533,7 +535,7 @@ func (sched *Scheduler)  scheduleOne(poolName string) {
 			sched.recordSchedulingFailure(poolName, assumedPod, err, SchedulerError,
 				fmt.Sprintf("reserve plugin %v failed", pl.Name()))
 			metrics.PodScheduleErrors.Inc()
-			return
+			return err
 		}
 	}
 	// assume modifies `assumedPod` by setting NodeName=scheduleResult.SuggestedHost
@@ -541,7 +543,7 @@ func (sched *Scheduler)  scheduleOne(poolName string) {
 	if err != nil {
 		klog.Errorf("error assuming pod: %v", err)
 		metrics.PodScheduleErrors.Inc()
-		return
+		return err
 	}
 	// bind the pod to its host asynchronously (we can do this b/c of the assumption step above).
 	go func() {
@@ -596,16 +598,21 @@ func (sched *Scheduler)  scheduleOne(poolName string) {
 			metrics.PodScheduleSuccesses.Inc()
 		}
 	}()
+	return nil
 }
 
 func (sched *Scheduler) schedulePools() {
 	stopCh := sched.config.StopEverything
+	// start default pool queue first
+	go scheduleOnePool(sched.scheduleOne, info.DefaultPoolName, stopCh)
+	// start other pool queues
 	for {
 		select {
 		case <-stopCh:
 			return
 		default:
 		}
+
 		func() {
 			defer runtimeutil.HandleCrash()
 			poolName := <-sched.config.StartSchedulingQueue
@@ -620,7 +627,7 @@ func (sched *Scheduler) schedulePools() {
 	}
 }
 
-func scheduleOnePool(f func(string), poolName string, stopCh <-chan struct{}) {
+func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct{}) {
 	klog.V(3).Infof("Starting scheduling for pool %s", poolName)
 	for {
 		select {
@@ -630,10 +637,16 @@ func scheduleOnePool(f func(string), poolName string, stopCh <-chan struct{}) {
 		default:
 		}
 
+		var err error
 		func() {
 			defer runtimeutil.HandleCrash()
-			f(poolName)
+			err = f(poolName)
 		}()
+		if err == queue.PriorityQueueClosedError {
+			klog.V(3).Infof("Stopping scheduling for pool %s as Pool Deleted", poolName)
+			return
+		}
+
 
 		// NOTE: b/c there is no priority selection in golang
 		// it is possible for this to race, meaning we could

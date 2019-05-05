@@ -160,13 +160,13 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 	}
 
 	sched.Cache().PrintAllPools()
+	// stop scheduling goroutine before removing
+	sched.config.PoolQueue.CloseQ(pool.Name)
 
 	if err := sched.config.PoolQueue.RemoveQueue(pool.Name); err != nil {
 		klog.Errorf("scheduler PoolQueue RemoveQueue failed: %v", err)
 		return
 	}
-	// stop scheduling goroutine
-	sched.config.PoolQueue.CloseQ(pool.Name)
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {
