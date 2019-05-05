@@ -316,7 +316,7 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 		// Update the scheduling queue with the nominated pod information. Without
 		// this, there would be a race condition between the next scheduling cycle
 		// and the time the scheduler receives a Pod Update for the nominated pod.
-		q, err := sched.config.SchedulingQueue.GetQueue(poolName)
+		q, err := sched.config.PoolQueue.GetQueue(poolName)
 		if err != nil {
 			return "", err
 		}
@@ -326,7 +326,7 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 		err = sched.config.PodPreemptor.SetNominatedNodeName(preemptor, nodeName)
 		if err != nil {
 			klog.Errorf("Error in preemption process. Cannot update pod %v/%v annotations: %v", preemptor.Namespace, preemptor.Name, err)
-			q, err := sched.config.SchedulingQueue.GetQueue(poolName)
+			q, err := sched.config.PoolQueue.GetQueue(poolName)
 			if err != nil {
 				return "", err
 			}
@@ -415,8 +415,8 @@ func (sched *Scheduler) assume(poolName string, assumed *v1.Pod, host string) er
 		return err
 	}
 	// if "assumed" is a nominated pod, we should remove it from internal cache
-	if sched.config.SchedulingQueue != nil {
-		q, err := sched.config.SchedulingQueue.GetQueue(poolName)
+	if sched.config.PoolQueue != nil {
+		q, err := sched.config.PoolQueue.GetQueue(poolName)
 		if err != nil {
 			return err
 		}

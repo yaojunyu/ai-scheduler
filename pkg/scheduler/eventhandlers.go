@@ -40,7 +40,7 @@ func (sched *Scheduler) onPvAdd(obj interface{}) {
 	// provisioning and binding process, will not trigger events to schedule pod
 	// again. So we need to move pods to active queue on PV add for this
 	// scenario.
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) onPvUpdate(old, new interface{}) {
@@ -48,15 +48,15 @@ func (sched *Scheduler) onPvUpdate(old, new interface{}) {
 	// bindings due to conflicts if PVs are updated by PV controller or other
 	// parties, then scheduler will add pod back to unschedulable queue. We
 	// need to move pods to active queue on PV update for this scenario.
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) onPvcAdd(obj interface{}) {
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) onPvcUpdate(old, new interface{}) {
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) onStorageClassAdd(obj interface{}) {
@@ -73,20 +73,20 @@ func (sched *Scheduler) onStorageClassAdd(obj interface{}) {
 	// We don't need to invalidate cached results because results will not be
 	// cached for pod that has unbound immediate PVCs.
 	if sc.VolumeBindingMode != nil && *sc.VolumeBindingMode == storagev1.VolumeBindingWaitForFirstConsumer {
-		sched.config.SchedulingQueue.MoveAllToActiveQueue()
+		sched.config.PoolQueue.MoveAllToActiveQueue()
 	}
 }
 
 func (sched *Scheduler) onServiceAdd(obj interface{}) {
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) onServiceUpdate(oldObj interface{}, newObj interface{}) {
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) onServiceDelete(obj interface{}) {
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) addPoolToCache(obj interface{}) {
@@ -101,7 +101,7 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 		return
 	}
 
-	if _, err := sched.config.SchedulingQueue.AddQueue(pool.Name, sched.config.StopEverything); err != nil {
+	if _, err := sched.config.PoolQueue.AddQueue(pool.Name, sched.config.StopEverything); err != nil {
 		klog.Error("scheduler queue AddQueue failed: %v", err)
 		return
 	}
@@ -161,12 +161,12 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 
 	sched.Cache().PrintAllPools()
 
-	if err := sched.config.SchedulingQueue.RemoveQueue(pool.Name); err != nil {
+	if err := sched.config.PoolQueue.RemoveQueue(pool.Name); err != nil {
 		klog.Errorf("scheduler PoolQueue RemoveQueue failed: %v", err)
 		return
 	}
-	// TODO stop goroutine
-	sched.config.SchedulingQueue.CloseQ()
+	// stop scheduling goroutine
+	sched.config.PoolQueue.CloseQ(pool.Name)
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {
@@ -181,7 +181,7 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 	}
 	sched.Cache().PrintAllPools()
 
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
@@ -205,8 +205,8 @@ func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
 	// to save processing cycles. We still trigger a move to active queue to cover the case
 	// that a pod being processed by the scheduler is determined unschedulable. We want this
 	// pod to be reevaluated when a change in the cluster happens.
-	if sched.config.SchedulingQueue.NumUnschedulablePods() == 0 || nodeSchedulingPropertiesChanged(newNode, oldNode) {
-		sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	if sched.config.PoolQueue.NumUnschedulablePods() == 0 || nodeSchedulingPropertiesChanged(newNode, oldNode) {
+		sched.config.PoolQueue.MoveAllToActiveQueue()
 	}
 }
 
@@ -238,7 +238,7 @@ func (sched *Scheduler) deleteNodeFromCache(obj interface{}) {
 	}
 }
 func (sched *Scheduler) addPodToSchedulingQueue(obj interface{}) {
-	if err := sched.config.SchedulingQueue.Add(obj.(*v1.Pod)); err != nil {
+	if err := sched.config.PoolQueue.Add(obj.(*v1.Pod)); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to queue %T: %v", obj, err))
 	}
 }
@@ -248,7 +248,7 @@ func (sched *Scheduler) updatePodInSchedulingQueue(oldObj, newObj interface{}) {
 	if sched.skipPodUpdate(pod) {
 		return
 	}
-	if err := sched.config.SchedulingQueue.Update(oldObj.(*v1.Pod), pod); err != nil {
+	if err := sched.config.PoolQueue.Update(oldObj.(*v1.Pod), pod); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to update %T: %v", newObj, err))
 	}
 }
@@ -269,7 +269,7 @@ func (sched *Scheduler) deletePodFromSchedulingQueue(obj interface{}) {
 		utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
 		return
 	}
-	if err := sched.config.SchedulingQueue.Delete(pod); err != nil {
+	if err := sched.config.PoolQueue.Delete(pod); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to dequeue %T: %v", obj, err))
 	}
 	if sched.config.VolumeBinder != nil {
@@ -290,7 +290,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}) {
 	}
 	sched.Cache().PrintAllPools()
 
-	sched.config.SchedulingQueue.AssignedPodAdded(pod)
+	sched.config.PoolQueue.AssignedPodAdded(pod)
 }
 
 func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
@@ -315,7 +315,7 @@ func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
 		klog.Errorf("scheduler cache UpdatePod failed: %v", err)
 	}
 
-	sched.config.SchedulingQueue.AssignedPodUpdated(newPod)
+	sched.config.PoolQueue.AssignedPodUpdated(newPod)
 }
 
 func (sched *Scheduler) deletePodFromCache(obj interface{}) {
@@ -345,7 +345,7 @@ func (sched *Scheduler) deletePodFromCache(obj interface{}) {
 
 	sched.Cache().PrintAllPools()
 
-	sched.config.SchedulingQueue.MoveAllToActiveQueue()
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 // assignedPod selects pods that are assigned (scheduled and running).
