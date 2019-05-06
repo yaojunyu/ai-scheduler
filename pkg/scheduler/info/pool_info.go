@@ -1,6 +1,7 @@
 package info
 
 import (
+	"fmt"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +24,7 @@ type PoolInfo struct {
 	nodes sets.String
 
 	// Resources divided to the pool
-	capacity *Resource
+	allocatable *Resource
 	// All resources used by pods
 	used 	 *Resource
 	// Resources borrowed by other task from other pool
@@ -33,12 +34,11 @@ type PoolInfo struct {
 
 func NewPoolInfo() *PoolInfo {
 	pi := &PoolInfo{
-		name:     "",
-		capacity: &Resource{},
-		used:     &Resource{},
-		shared:   &Resource{},
+		name:        "",
+		allocatable: &Resource{},
+		used:        &Resource{},
+		shared:      &Resource{},
 
-		//pods: make(map[types.UID]*v1.Pod),
 		nodes: sets.NewString(),
 	}
 	return pi
@@ -49,7 +49,7 @@ func (p *PoolInfo) AddNode(node *v1.Node) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.capacity.Add(node.Status.Allocatable)
+	p.allocatable.Add(node.Status.Allocatable)
 	p.nodes.Insert(node.Name)
 	return nil
 }
@@ -59,7 +59,10 @@ func (p *PoolInfo) RemoveNode(node *v1.Node) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.capacity.Sub(NewResource(node.Status.Allocatable))
+	if !p.nodes.Has(node.Name) {
+		return fmt.Errorf("ant remove node %v not in pool %v", node.Name, p.name)
+	}
+	p.allocatable.Sub(NewResource(node.Status.Allocatable))
 	p.nodes.Delete(node.Name)
 	return nil
 }
@@ -68,35 +71,40 @@ func (p *PoolInfo) UpdateNode(oldNode *v1.Node, newNode *v1.Node) error {
 	if p == nil || oldNode == nil || newNode == nil || oldNode == newNode {
 		return nil
 	}
-	p.RemoveNode(oldNode)
-	p.AddNode(newNode)
+	if oldNode.UID != newNode.UID {
+		return fmt.Errorf("update node failed don't has same id")
+	}
+
+	if err := p.RemoveNode(oldNode); err != nil {
+		return err
+	}
 	p.nodes.Delete(oldNode.Name)
+
+	if err := p.AddNode(newNode); err != nil {
+		return err
+	}
 	p.nodes.Insert(newNode.Name)
 	return nil
 }
 
 // AddPod compute used and shared
 func (p *PoolInfo) AddPod(pod *v1.Pod) error {
-	res := GetPodResourceRequestWithoutNonZeroContainer(pod)
+	res := GetResourceRequestForPool(pod)
 	p.used.Plus(res)
-	p.used.AllowedPodNumber += 1
 
 	if !p.MatchPod(pod) {
 		p.shared.Plus(res)
-		p.shared.AllowedPodNumber += 1
 	}
 
 	return nil
 }
 
 func (p *PoolInfo) RemovePod(pod *v1.Pod) error {
-	res := GetPodResourceRequestWithoutNonZeroContainer(pod)
+	res := GetResourceRequestForPool(pod)
 	p.used.Sub(res)
-	p.used.AllowedPodNumber -= 1
 
 	if !p.MatchPod(pod) {
 		p.shared.Sub(res)
-		p.shared.AllowedPodNumber -= 1
 	}
 	// we ignore pod if nod exists
 	return nil
@@ -123,7 +131,7 @@ func (p *PoolInfo) AddNodeInfo(node *NodeInfo) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.capacity.Plus(node.allocatableResource)
+	p.allocatable.Plus(node.allocatableResource)
 	p.nodes.Insert(node.Node().Name)
 	for _, pod := range node.pods {
 		p.AddPod(pod)
@@ -136,7 +144,7 @@ func (p *PoolInfo) RemoveNodeInfo(node *NodeInfo) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.capacity.Sub(node.allocatableResource)
+	p.allocatable.Sub(node.allocatableResource)
 	p.nodes.Delete(node.Node().Name)
 	for _, pod := range node.pods {
 		p.RemovePod(pod)
@@ -185,7 +193,7 @@ func (p *PoolInfo) ClearPool() error {
 		return nil
 	}
 	p.pool = nil
-	p.capacity = &Resource{}
+	p.allocatable = &Resource{}
 	p.used = &Resource{}
 	p.shared = &Resource{}
 
@@ -241,11 +249,11 @@ func (p *PoolInfo) Name() string {
 	return p.pool.Name
 }
 
-func (p *PoolInfo) Capacity() *Resource {
+func (p *PoolInfo) Allocatable() *Resource {
 	if p == nil {
 		return &Resource{}
 	}
-	return p.capacity
+	return p.allocatable
 }
 
 func (p *PoolInfo) Used() *Resource {
@@ -266,7 +274,7 @@ func (p *PoolInfo) SetCapacity(resource *Resource) {
 	if p == nil {
 		return
 	}
-	p.capacity = resource
+	p.allocatable = resource
 }
 
 func (p *PoolInfo) SetUsed(resource *Resource) {
@@ -289,15 +297,15 @@ func (p *PoolInfo) SetCapacityResource(name v1.ResourceName, value int64) {
 	}
 	switch name {
 	case v1.ResourceCPU:
-		p.capacity.MilliCPU = value
+		p.allocatable.MilliCPU = value
 	case v1.ResourceMemory:
-		p.capacity.Memory = value
+		p.allocatable.Memory = value
 	case v1.ResourceEphemeralStorage:
-		p.capacity.EphemeralStorage = value
+		p.allocatable.EphemeralStorage = value
 	case ResourceGPU:
-		p.capacity.SetScalar(name, value)
+		p.allocatable.SetScalar(name, value)
 	default:
-		p.capacity.SetScalar(name, value)
+		p.allocatable.SetScalar(name, value)
 	}
 }
 

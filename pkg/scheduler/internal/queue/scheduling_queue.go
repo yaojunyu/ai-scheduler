@@ -971,7 +971,7 @@ func checkResourceIfEnough(poolName string, pod *v1.Pod, schedulerCache schedule
 		return false
 	}
 
-	return res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Capacity())
+	return res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Allocatable())
 }
 
 func borrowFromOtherPool(poolName string, pod *v1.Pod, queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) error {
@@ -979,7 +979,7 @@ func borrowFromOtherPool(poolName string, pod *v1.Pod, queues SchedulingPoolQueu
 	for _, poolInfo := range schedulerCache.Pools() {
 		if poolName != poolInfo.Name() {
 			res := predicates.GetResourceRequest(pod)
-			if res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Capacity()) {
+			if res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Allocatable()) {
 				q, err := queues.GetQueue(poolInfo.Name())
 				if err != nil {
 					return err

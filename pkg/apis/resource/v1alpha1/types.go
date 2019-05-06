@@ -71,7 +71,7 @@ type PoolSpec struct{
 
 // PoolStatus
 type PoolStatus struct {
-	// Capacity all quota of pool divided
+	// Allocatable all quota of pool divided
 	// +optional
 	Deserved v1.ResourceList `json:"deserved,omitempty"`
 

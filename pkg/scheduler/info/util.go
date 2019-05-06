@@ -117,12 +117,14 @@ func AllocatedStatus(pod *v1.Pod) bool {
 	}
 }
 
-// GetPodResourceRequestWithNonZeroContainer
-func GetPodResourceRequestWithoutNonZeroContainer(pod *v1.Pod) *Resource {
-	res, _, _ := calculateResource(pod)
-	result := res.Clone()
-	//result.MilliCPU += non0CPU
-	//result.Memory += non0Mem
+// GetResourceRequestForPool
+func GetResourceRequestForPool(pod *v1.Pod) *Resource {
+	result := &Resource{}
+	for _, container := range pod.Spec.Containers {
+		result.Add(container.Resources.Requests)
+	}
+	// add the pods
+	result.AllowedPodNumber += 1
 	return result
 }
 
