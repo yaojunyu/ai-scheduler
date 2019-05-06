@@ -929,7 +929,7 @@ func (cache *schedulerCache) calculateTotalQuota() *schedulerinfo.Resource {
 	var totalQuota = &schedulerinfo.Resource{}
 	for _, p := range cache.pools {
 		totalQuota.Add(p.GetQuota())
-		//p.SetDeserved(&schedulerinfo.Resource{})
+		//p.SetCapacity(&schedulerinfo.Resource{})
 	}
 
 	return totalQuota
@@ -1008,7 +1008,7 @@ func (cache *schedulerCache) weightedPoolsSize(rn v1.ResourceName) int64 {
 //			}
 //		}
 //	}
-//	cache.pools[schedulerinfo.DefaultPool].SetDeserved(deserved)
+//	cache.pools[schedulerinfo.DefaultPool].SetCapacity(deserved)
 //	return deserved
 //}
 
@@ -1021,7 +1021,7 @@ func (cache *schedulerCache) deserveWeightedPools(remain *schedulerinfo.Resource
 		for rn, tw := range totalWeights {
 			if !p.HasQuota(rn) && p.Weighted(rn) {
 				ratio := cache.calculateRatio(p, rn, tw)
-				p.SetDeservedResource(rn, int64(float64(remain.GetValue(rn)) * ratio))
+				p.SetCapacityResource(rn, int64(float64(remain.GetValue(rn)) * ratio))
 			}
 
 		}
@@ -1057,15 +1057,15 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 					if overQuotaV > 0 {
 						if quotaV > overQuotaV {
 							delta := quotaV - overQuotaV
-							cache.pools[pool.Name].SetDeservedResource(n, delta)
+							cache.pools[pool.Name].SetCapacityResource(n, delta)
 
 							overQuotaV = 0
 						} else {
-							cache.pools[pool.Name].SetDeservedResource(n, 0)
+							cache.pools[pool.Name].SetCapacityResource(n, 0)
 							overQuotaV -= quotaV
 						}
 					} else {
-						cache.pools[pool.Name].SetDeservedResource(n, quotaV)
+						cache.pools[pool.Name].SetCapacityResource(n, quotaV)
 					}
 				}
 			}
@@ -1075,7 +1075,7 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 			for _, p := range cache.pools {
 				if p.HasQuota(n) {
 					quotaV := p.GetQuotaValue(n)
-					p.SetDeservedResource(n, quotaV)
+					p.SetCapacityResource(n, quotaV)
 				}
 			}
 			remain.SetValue(n, remainResV - totalResQuotaV)
@@ -1097,15 +1097,15 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 //			}
 //
 //			// compute deserved
-//			p.SetDeserved(res)
+//			p.SetCapacity(res)
 //			//for _, rn := range res.ResourceNames() {
 //			//	//if !p.HasQuota(rn) && !p.Weighted(rn) {
 //			//		if res.GetValue(rn) > remain.GetValue(rn) {
-//			//			p.SetDeservedResource(rn, remain.GetValue(rn))
+//			//			p.SetCapacityResource(rn, remain.GetValue(rn))
 //			//			remain.SetValue(rn, 0)
 //			//		} else {
 //			//			dsv := remain.GetValue(rn) - res.GetValue(rn)
-//			//			p.SetDeservedResource(rn, res.GetValue(rn))
+//			//			p.SetCapacityResource(rn, res.GetValue(rn))
 //			//			remain.SetValue(rn, dsv)
 //			//		}
 //			//	//}
@@ -1183,7 +1183,7 @@ func (cache *schedulerCache) printPools() {
 	var log = fmt.Sprintf(`All Pools Detail:
 %-20s%-20s%-20s%-20s%-20s%-20s
 %s`,
-		"Pools", "Resource(w)", "Deserved", "Used", "Shared", "Total",
+		"Pools", "Resource(w)", "Capacity", "Used", "Shared", "Total",
 		strings.Repeat("-", 120),
 		)
 	keys := make([]string, 0, len(cache.pools))
@@ -1208,22 +1208,22 @@ func (cache *schedulerCache) printPools() {
 			poolName = "Default"
 		}
 		log += fmt.Sprintf(detail,
-			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Deserved().MilliCPU, p.Used().MilliCPU,
+			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Capacity().MilliCPU, p.Used().MilliCPU,
 			p.Shared().MilliCPU, totalRes.MilliCPU,
 
 			"", fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[schedulerinfo.ResourceGPU]),
-			p.Deserved().ScalarResources[schedulerinfo.ResourceGPU], p.Used().ScalarResources[schedulerinfo.ResourceGPU],
+			p.Capacity().ScalarResources[schedulerinfo.ResourceGPU], p.Used().ScalarResources[schedulerinfo.ResourceGPU],
 			p.Shared().ScalarResources[schedulerinfo.ResourceGPU], totalRes.ScalarResources[schedulerinfo.ResourceGPU],
 
-			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Deserved().Memory, p.Used().Memory,
+			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Capacity().Memory, p.Used().Memory,
 			p.Shared().Memory, totalRes.Memory,
 
-			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]), p.Deserved().EphemeralStorage,
+			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]), p.Capacity().EphemeralStorage,
 			p.Used().EphemeralStorage, p.Shared().EphemeralStorage, totalRes.EphemeralStorage,
 
 			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/cache.NodeTree(p.Name()).numNodes, "-", "-", len(cache.nodes),
 
-			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]), p.Deserved().AllowedPodNumber,
+			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]), p.Capacity().AllowedPodNumber,
 			p.Used().AllowedPodNumber, p.Shared().AllowedPodNumber, totalRes.AllowedPodNumber,
 
 			strings.Repeat("-", 120),

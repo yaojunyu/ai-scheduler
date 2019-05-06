@@ -23,7 +23,7 @@ type PoolInfo struct {
 	nodes sets.String
 
 	// Resources divided to the pool
-	deserved *Resource
+	capacity *Resource
 	// All resources used by pods
 	used 	 *Resource
 	// Resources borrowed by other task from other pool
@@ -32,10 +32,10 @@ type PoolInfo struct {
 
 func NewPoolInfo() *PoolInfo {
 	pi := &PoolInfo{
-		name: "",
-		deserved: &Resource{},
-		used: &Resource{},
-		shared: &Resource{},
+		name:     "",
+		capacity: &Resource{},
+		used:     &Resource{},
+		shared:   &Resource{},
 
 		//pods: make(map[types.UID]*v1.Pod),
 		nodes: sets.NewString(),
@@ -48,7 +48,7 @@ func (p *PoolInfo) AddNode(node *v1.Node) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.deserved.Add(node.Status.Allocatable)
+	p.capacity.Add(node.Status.Allocatable)
 	p.nodes.Insert(node.Name)
 	return nil
 }
@@ -58,7 +58,7 @@ func (p *PoolInfo) RemoveNode(node *v1.Node) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.deserved.Sub(NewResource(node.Status.Allocatable))
+	p.capacity.Sub(NewResource(node.Status.Allocatable))
 	p.nodes.Delete(node.Name)
 	return nil
 }
@@ -122,7 +122,7 @@ func (p *PoolInfo) AddNodeInfo(node *NodeInfo) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.deserved.Plus(node.allocatableResource)
+	p.capacity.Plus(node.allocatableResource)
 	p.nodes.Insert(node.Node().Name)
 	for _, pod := range node.pods {
 		p.AddPod(pod)
@@ -135,7 +135,7 @@ func (p *PoolInfo) RemoveNodeInfo(node *NodeInfo) error {
 	if p == nil || node == nil {
 		return nil
 	}
-	p.deserved.Sub(node.allocatableResource)
+	p.capacity.Sub(node.allocatableResource)
 	p.nodes.Delete(node.Node().Name)
 	for _, pod := range node.pods {
 		p.RemovePod(pod)
@@ -184,7 +184,7 @@ func (p *PoolInfo) ClearPool() error {
 		return nil
 	}
 	p.pool = nil
-	p.deserved = &Resource{}
+	p.capacity = &Resource{}
 	p.used = &Resource{}
 	p.shared = &Resource{}
 
@@ -240,11 +240,11 @@ func (p *PoolInfo) Name() string {
 	return p.pool.Name
 }
 
-func (p *PoolInfo) Deserved() *Resource {
+func (p *PoolInfo) Capacity() *Resource {
 	if p == nil {
 		return &Resource{}
 	}
-	return p.deserved
+	return p.capacity
 }
 
 func (p *PoolInfo) Used() *Resource {
@@ -261,11 +261,11 @@ func (p *PoolInfo) Shared() *Resource {
 	return p.shared
 }
 
-func (p *PoolInfo) SetDeserved(resource *Resource) {
+func (p *PoolInfo) SetCapacity(resource *Resource) {
 	if p == nil {
 		return
 	}
-	p.deserved = resource
+	p.capacity = resource
 }
 
 func (p *PoolInfo) SetUsed(resource *Resource) {
@@ -282,21 +282,21 @@ func (p *PoolInfo) SetShared(resource *Resource) {
 	p.shared = resource
 }
 
-func (p *PoolInfo) SetDeservedResource(name v1.ResourceName, value int64) {
+func (p *PoolInfo) SetCapacityResource(name v1.ResourceName, value int64) {
 	if p == nil || value < 0 {
 		return
 	}
 	switch name {
 	case v1.ResourceCPU:
-		p.deserved.MilliCPU = value
+		p.capacity.MilliCPU = value
 	case v1.ResourceMemory:
-		p.deserved.Memory = value
+		p.capacity.Memory = value
 	case v1.ResourceEphemeralStorage:
-		p.deserved.EphemeralStorage = value
+		p.capacity.EphemeralStorage = value
 	case ResourceGPU:
-		p.deserved.SetScalar(name, value)
+		p.capacity.SetScalar(name, value)
 	default:
-		p.deserved.SetScalar(name, value)
+		p.capacity.SetScalar(name, value)
 	}
 }
 
