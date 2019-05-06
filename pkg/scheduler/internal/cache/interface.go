@@ -99,8 +99,14 @@ type Cache interface {
 	// Pools return the pools
 	Pools() map[string]*schedulerinfo.PoolInfo
 
+	// NumPools return the number of pools
+	NumPools() int
+
+	// NumNodes return the nuber of nodes
+	NumNodes() int
+
 	// GetPool return pool by name
-	GetPool(poolName string) *schedulerinfo.PoolInfo
+	GetPool(poolName string) (*schedulerinfo.PoolInfo, error)
 
 	// AddNode adds overall information about node.
 	AddNode(node *v1.Node) error
@@ -131,8 +137,8 @@ type Cache interface {
 	// DeserveAllPools compute all pools' deserved resources  quota
 	DeserveAllPools() error
 
-	// PrintAllPools print all pools detail
-    PrintAllPools()
+	// TotalAllocatableResource calculate all allocatable resources
+	TotalAllocatableResource() *schedulerinfo.Resource
 }
 
 // Snapshot is a snapshot of cache state

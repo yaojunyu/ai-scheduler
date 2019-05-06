@@ -138,3 +138,29 @@ func GetPodAnnotationsPoolName(pod *v1.Pod) string {
 //func BelongToDefaultPool(pod *v1.Pod) bool {
 //	return GetPodPoolName(pod) == DefaultPool
 //}
+
+func CalculatePodRequestResource(pod *v1.Pod) *Resource {
+	result := &Resource{}
+	for _, container := range pod.Spec.Containers {
+		result.Add(container.Resources.Requests)
+	}
+
+	// take max_resource(sum_pod, any_init_container)
+	for _, container := range pod.Spec.InitContainers {
+		result.SetMaxResource(container.Resources.Requests)
+	}
+	result.AllowedPodNumber+=1
+	return result
+}
+
+func CalculateSumPodsRequestResource(pods []*v1.Pod) *Resource {
+	sum := &Resource{}
+	if pods == nil {
+		return sum
+	}
+	for _, pod := range pods {
+		sum.Plus(CalculatePodRequestResource(pod))
+	}
+
+	return sum
+}

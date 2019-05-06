@@ -24,6 +24,8 @@ import (
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"k8s.io/klog"
@@ -660,4 +662,71 @@ func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct
 		default:
 		}
 	}
+}
+
+// printScheduler print all pools cache and pool queue detail
+func (sched *Scheduler) PrintPools() {
+	cache := sched.config.SchedulerCache
+	lineWidth := 140
+
+	totalRes := cache.TotalAllocatableResource()
+	var log = fmt.Sprintf(`All Pools Detail:
+%-20s%-20s%-20s%-20s%-20s%-20s%-20s
+%s`,
+		"Pools", "Resource(w)", "Capacity", "Used", "Shared", "Pending", "Total",
+		strings.Repeat("-", lineWidth),
+	)
+	keys := make([]string, 0, cache.NumPools())
+	for k := range cache.Pools() {
+		keys = append(keys, k)
+	}
+	sort.Sort(sort.StringSlice(keys))
+
+	for _, key := range keys  {
+		p, err := cache.GetPool(key)
+		if err != nil {
+			continue
+		}
+		q, err := sched.config.PoolQueue.GetQueue(key)
+		if err != nil {
+			continue
+		}
+		detail := `
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20v%-20v%-20v%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d
+%s`
+		poolName := p.Name()
+
+		pendingRes := info.CalculateSumPodsRequestResource(q.PendingPods())
+		if p.Name() == "" {
+			poolName = "Default"
+		}
+		log += fmt.Sprintf(detail,
+			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Capacity().MilliCPU, p.Used().MilliCPU,
+			p.Shared().MilliCPU, pendingRes.MilliCPU, totalRes.MilliCPU,
+
+			"", fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[info.ResourceGPU]),
+			p.Capacity().ScalarResources[info.ResourceGPU], p.Used().ScalarResources[info.ResourceGPU],
+			p.Shared().ScalarResources[info.ResourceGPU], pendingRes.GetValue(info.ResourceGPU), totalRes.ScalarResources[info.ResourceGPU],
+
+			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Capacity().Memory, p.Used().Memory,
+			p.Shared().Memory, pendingRes.Memory, totalRes.Memory,
+
+			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]), p.Capacity().EphemeralStorage,
+			p.Used().EphemeralStorage, p.Shared().EphemeralStorage, pendingRes.EphemeralStorage, totalRes.EphemeralStorage,
+
+			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", cache.NumNodes(),
+
+			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]), p.Capacity().AllowedPodNumber,
+			p.Used().AllowedPodNumber, p.Shared().AllowedPodNumber, pendingRes.AllowedPodNumber, totalRes.AllowedPodNumber,
+
+			strings.Repeat("-", lineWidth),
+		)
+
+	}
+	klog.V(4).Infoln(log)
 }

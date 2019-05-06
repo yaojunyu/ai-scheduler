@@ -37,7 +37,6 @@ import (
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
@@ -923,7 +922,8 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 			klog.V(4).Infof("About to try and schedule pod %v/%v in pool queue %v", pod.Namespace, pod.Name, poolName)
 
 			// if the pool has not enough resources then borrows other pool
-			if !checkResourceIfEnough(poolName, pod, queues, schedulerCache) {
+			// FIXME reconstruct if possible
+			if !checkResourceIfEnough(poolName, pod, schedulerCache) {
 				selfPoolName := queues.GetPoolQueueNameIfNotPresent(pod)
 				if poolName == selfPoolName {
 					// borrow other pool
@@ -959,12 +959,18 @@ func podInfoKeyFunc(obj interface{}) (string, error) {
 	return cache.MetaNamespaceKeyFunc(obj.(*podInfo).pod)
 }
 
-func checkResourceIfEnough(poolName string, pod *v1.Pod, queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) bool {
+// FIXME reconstruct if possible
+func checkResourceIfEnough(poolName string, pod *v1.Pod, schedulerCache schedulerinternalcache.Cache) bool {
 	//res := info.GetPodResourceRequestWithoutNonZeroContainer(pod)
 	res := predicates.GetResourceRequest(pod)
 
 	//q, err := queues.GetQueue(poolName)
-	poolInfo := schedulerCache.GetPool(poolName)
+	poolInfo, err := schedulerCache.GetPool(poolName)
+	if err != nil {
+		klog.Errorf("Get pool failed: %v", err)
+		return false
+	}
+
 	return res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Capacity())
 }
 
@@ -972,7 +978,7 @@ func borrowFromOtherPool(poolName string, pod *v1.Pod, queues SchedulingPoolQueu
 	// TODO consider priority of pool and pool idle size
 	for _, poolInfo := range schedulerCache.Pools() {
 		if poolName != poolInfo.Name() {
-			res := info.GetPodResourceRequestWithoutNonZeroContainer(pod)
+			res := predicates.GetResourceRequest(pod)
 			if res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Capacity()) {
 				q, err := queues.GetQueue(poolInfo.Name())
 				if err != nil {

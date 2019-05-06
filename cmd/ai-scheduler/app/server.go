@@ -227,6 +227,7 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 
 	controller.WaitForCacheSync("scheduler", stopCh, cc.PodInformer.Informer().HasSynced)
 
+	sched.PrintPools()
 	// Prepare a reusable runCommand function.
 	run := func(ctx context.Context) {
 		sched.Run()

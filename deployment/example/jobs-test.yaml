@@ -1,12 +1,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: test-job5
+  name: test-job
 spec:
-  parallelism: 1
+  parallelism: 2
   template:
     metadata:
-      name: test-job5
+      name: test-job
       annotations:
         resource.aibee.cn/pool: prod-cpu-pool
     spec:
@@ -18,10 +18,10 @@ spec:
           args: ["-Mbignum=bpi", "-wle", "print bpi(20000)"]
           resources:
             limits:
-              cpu: 100m
+              cpu: 1
               memory: 100M
             requests:
-              cpu: 100m
+              cpu: 1
               memory: 100M
       restartPolicy: Never
   backoffLimit: 1

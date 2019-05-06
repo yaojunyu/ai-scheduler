@@ -19,8 +19,6 @@ package cache
 import (
 	"fmt"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -626,13 +624,19 @@ func (cache *schedulerCache) RemovePool(pool *v1alpha1.Pool) error {
 	return err
 }
 
-func (cache *schedulerCache) GetPool(poolName string) *schedulerinfo.PoolInfo {
-	// TODO need add Lock?
-	return cache.pools[poolName]
+func (cache *schedulerCache) GetPool(poolName string) (*schedulerinfo.PoolInfo, error) {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	pool, ok := cache.pools[poolName]
+	if !ok {
+		return nil, fmt.Errorf("pool %v does not exist in scheduler cache", poolName)
+	}
+	return pool, nil
 }
 
 func (cache *schedulerCache) Pools() map[string]*schedulerinfo.PoolInfo {
-	// TODO need add Lock?
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
 	return cache.pools
 }
 
@@ -668,16 +672,6 @@ func (cache *schedulerCache) subFromDefaultPool(poolInfo *schedulerinfo.PoolInfo
 	}
 	//return defaultPoolInfo.RemoveNodeInfos(cache.getNodeInfos(poolInfo.Name()))
 	return nil
-}
-
-func (cache *schedulerCache) getPool(poolName string) (*schedulerinfo.PoolInfo, error) {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
-	pool, ok := cache.pools[poolName]
-	if !ok {
-		return nil, fmt.Errorf("pool %v does not exist in scheduler cache", poolName)
-	}
-	return pool, nil
 }
 
 func (cache *schedulerCache) AddNode(node *v1.Node) error {
@@ -916,13 +910,7 @@ func (cache *schedulerCache) DeserveAllPools() error {
 	// Deserve weighted pools
 	//cache.deserveWeightedPools(remainRes)
 
-	cache.printPools()
-
 	return nil
-}
-
-func (cache *schedulerCache) PrintAllPools() {
-	cache.printPools()
 }
 
 func (cache *schedulerCache) calculateTotalQuota() *schedulerinfo.Resource {
@@ -1178,58 +1166,21 @@ func (cache *schedulerCache) getPools() []interface{} {
 	return pools
 }
 
-func (cache *schedulerCache) printPools() {
-	totalRes := cache.calculateTotalResource()
-	var log = fmt.Sprintf(`All Pools Detail:
-%-20s%-20s%-20s%-20s%-20s%-20s
-%s`,
-		"Pools", "Resource(w)", "Capacity", "Used", "Shared", "Total",
-		strings.Repeat("-", 120),
-		)
-	keys := make([]string, 0, len(cache.pools))
-	for k := range cache.pools {
-		keys = append(keys, k)
-	}
-	sort.Sort(sort.StringSlice(keys))
+func (cache *schedulerCache) NumPools() int {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	return len(cache.pools)
+}
 
-	for _, key := range keys  {
-		p := cache.pools[key]
-		detail := `
-%-20s%-20s%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20v%-20v%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d
-%s`
-		poolName := p.Name()
+func (cache *schedulerCache) NumNodes() int {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	return len(cache.nodes)
+}
 
-		if p.Name() == "" {
-			poolName = "Default"
-		}
-		log += fmt.Sprintf(detail,
-			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Capacity().MilliCPU, p.Used().MilliCPU,
-			p.Shared().MilliCPU, totalRes.MilliCPU,
-
-			"", fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[schedulerinfo.ResourceGPU]),
-			p.Capacity().ScalarResources[schedulerinfo.ResourceGPU], p.Used().ScalarResources[schedulerinfo.ResourceGPU],
-			p.Shared().ScalarResources[schedulerinfo.ResourceGPU], totalRes.ScalarResources[schedulerinfo.ResourceGPU],
-
-			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Capacity().Memory, p.Used().Memory,
-			p.Shared().Memory, totalRes.Memory,
-
-			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]), p.Capacity().EphemeralStorage,
-			p.Used().EphemeralStorage, p.Shared().EphemeralStorage, totalRes.EphemeralStorage,
-
-			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/cache.NodeTree(p.Name()).numNodes, "-", "-", len(cache.nodes),
-
-			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]), p.Capacity().AllowedPodNumber,
-			p.Used().AllowedPodNumber, p.Shared().AllowedPodNumber, totalRes.AllowedPodNumber,
-
-			strings.Repeat("-", 120),
-			)
-
-	}
-	klog.V(4).Infoln(log)
+func (cache *schedulerCache) TotalAllocatableResource() *schedulerinfo.Resource {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	return cache.calculateTotalResource()
 }
 

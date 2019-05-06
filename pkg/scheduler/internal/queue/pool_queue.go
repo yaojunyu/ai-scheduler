@@ -265,8 +265,9 @@ func (pq *PoolQueue) poolQueuePodPriorityComp(poolName string) util.LessFunc {
 		prio1 := util.GetPodPriority(pInfo1.pod)
 		prio2 := util.GetPodPriority(pInfo2.pod)
 
-		pn1 := pq.GetPoolQueueNameIfNotPresent(pInfo1.pod)
-		pn2 := pq.GetPoolQueueNameIfNotPresent(pInfo2.pod)
+		// must not lock
+		pn1 := pq.matchPoolQueueNameForPod(pInfo1.pod)
+		pn2 := pq.matchPoolQueueNameForPod(pInfo2.pod)
 
 		if pn1 == poolName && pn2 == poolName {
 			return (prio1 > prio2) || (prio1 == prio2 &&
@@ -285,6 +286,13 @@ func (pq *PoolQueue) poolQueuePodPriorityComp(poolName string) util.LessFunc {
 
 // getPoolQueueNameIfNotPresent return pool name by pod annotations, if not found return default name
 func (pq *PoolQueue) GetPoolQueueNameIfNotPresent(pod *v1.Pod) string {
+	pq.lock.Lock()
+	defer pq.lock.Unlock()
+
+	return pq.matchPoolQueueNameForPod(pod)
+}
+
+func (pq *PoolQueue) matchPoolQueueNameForPod(pod *v1.Pod) string {
 	poolName := info.GetPodAnnotationsPoolName(pod)
 	if _, ok := pq.queues[poolName]; ok {
 		return poolName

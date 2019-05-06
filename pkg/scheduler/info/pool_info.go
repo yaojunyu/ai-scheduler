@@ -28,6 +28,7 @@ type PoolInfo struct {
 	used 	 *Resource
 	// Resources borrowed by other task from other pool
 	shared   *Resource
+
 }
 
 func NewPoolInfo() *PoolInfo {
