@@ -245,7 +245,7 @@ func (r *Resource) SetScalar(name v1.ResourceName, quantity int64) {
 }
 
 // SetMaxResource compares with ResourceList and takes max value for each Resource.
-func (r *Resource)  SetMaxResource(rl v1.ResourceList) {
+func (r *Resource) SetMaxResource(rl v1.ResourceList) {
 	if r == nil {
 		return
 	}
@@ -791,16 +791,7 @@ func (r *Resource) LessOrEqual(rr *Resource) bool {
 		return false
 	}
 
-
-	if r.ScalarResources == nil {
-		return true
-	}
-
 	for rName, rQuant := range r.ScalarResources {
-		if rr.ScalarResources == nil {
-			return false
-		}
-
 		rrQuant := rr.ScalarResources[rName]
 		if rQuant > rrQuant {
 			return false
