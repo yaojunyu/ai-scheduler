@@ -934,23 +934,23 @@ func fakeNodeInfo(pods ...*v1.Pod) *NodeInfo {
 
 func TestResourceLessOrEqual(t *testing.T) {
 	tests := []struct {
-		left *Resource
-		right *Resource
+		leftOpt  *Resource
+		rightOpt *Resource
 		expected bool
 	}{
 		{
-			left: &Resource{},
-			right: &Resource{},
+			leftOpt:  &Resource{},
+			rightOpt: &Resource{},
 			expected: true,
 		},
 		{
-			left: &Resource{
+			leftOpt: &Resource{
 				MilliCPU:         3,
 				Memory:           1000,
 				EphemeralStorage: 4000,
 				AllowedPodNumber: 70,
 			},
-			right: &Resource{
+			rightOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 				EphemeralStorage: 5000,
@@ -959,13 +959,13 @@ func TestResourceLessOrEqual(t *testing.T) {
 			expected: true,
 		},
 		{
-			left: &Resource{
+			leftOpt: &Resource{
 				MilliCPU:         3,
 				Memory:           1000,
 				EphemeralStorage: 8000,
 				AllowedPodNumber: 70,
 			},
-			right: &Resource{
+			rightOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 				EphemeralStorage: 5000,
@@ -974,23 +974,23 @@ func TestResourceLessOrEqual(t *testing.T) {
 			expected: false,
 		},
 		{
-			left: &Resource{
+			leftOpt: &Resource{
 				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 2},
 			},
-			right: &Resource{
+			rightOpt: &Resource{
 				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 2, "hugepages-test": 2},
 			},
 			expected: true,
 		},
 		{
-			left: &Resource{
+			leftOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 				EphemeralStorage: 5000,
 				AllowedPodNumber: 80,
 				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 1, "hugepages-test": 2},
 			},
-			right: &Resource{
+			rightOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 				EphemeralStorage: 5000,
@@ -1000,11 +1000,11 @@ func TestResourceLessOrEqual(t *testing.T) {
 			expected: true,
 		},
 		{
-			left: &Resource{
+			leftOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 			},
-			right: &Resource{
+			rightOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 				EphemeralStorage: 5000,
@@ -1015,11 +1015,11 @@ func TestResourceLessOrEqual(t *testing.T) {
 		},
 
 		{
-			left: &Resource{
+			leftOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 			},
-			right: &Resource{
+			rightOpt: &Resource{
 				EphemeralStorage: 5000,
 				AllowedPodNumber: 80,
 				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 1, "hugepages-test": 2},
@@ -1027,12 +1027,12 @@ func TestResourceLessOrEqual(t *testing.T) {
 			expected: false,
 		},
 		{
-			left: &Resource{
+			leftOpt: &Resource{
 				MilliCPU:         3,
 				Memory:           3000,
 				EphemeralStorage: 5000,
 			},
-			right: &Resource{
+			rightOpt: &Resource{
 				MilliCPU:         4,
 				Memory:           2000,
 				EphemeralStorage: 5000,
@@ -1044,8 +1044,69 @@ func TestResourceLessOrEqual(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		r := test.left.LessOrEqual(test.right)
+		r := test.leftOpt.LessOrEqual(test.rightOpt)
 		if r != test.expected {
+			t.Errorf("expected: %#v, got: %#v", test.expected, r)
+		}
+	}
+}
+
+func TestResourcePlus(t *testing.T) {
+	tests := []struct {
+		leftOpt  *Resource
+		rightOpt *Resource
+		expected *Resource
+	}{
+		{
+			leftOpt:  &Resource{},
+			rightOpt: &Resource{},
+			expected: &Resource{},
+		},
+		{
+			leftOpt: &Resource{
+				MilliCPU:         4,
+				Memory:           2000,
+				EphemeralStorage: 5000,
+				AllowedPodNumber: 80,
+				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 1, "hugepages-test": 2},
+			},
+			rightOpt: &Resource{
+				MilliCPU:         4,
+				Memory:           2000,
+				EphemeralStorage: 5000,
+				ScalarResources:  map[v1.ResourceName]int64{"hugepages-test": 2},
+			},
+			expected: &Resource{
+				MilliCPU:         8,
+				Memory:           4000,
+				EphemeralStorage: 10000,
+				AllowedPodNumber: 80,
+				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 1, "hugepages-test": 4},
+			},
+		},
+		{
+			leftOpt: &Resource{
+				EphemeralStorage: 5000,
+				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 1, "hugepages-test": 2},
+			},
+			rightOpt: &Resource{
+				MilliCPU:         4,
+				Memory:           2000,
+				EphemeralStorage: 5000,
+				ScalarResources:  map[v1.ResourceName]int64{"hugepages-test": 2},
+			},
+			expected: &Resource{
+				MilliCPU:         4,
+				Memory:           2000,
+				EphemeralStorage: 10000,
+				ScalarResources:  map[v1.ResourceName]int64{"scalar.test/scalar1": 1, "hugepages-test": 4},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		r := test.leftOpt.Plus(test.rightOpt)
+		if !reflect.DeepEqual(test.leftOpt, test.expected) {
 			t.Errorf("expected: %#v, got: %#v", test.expected, r)
 		}
 	}
