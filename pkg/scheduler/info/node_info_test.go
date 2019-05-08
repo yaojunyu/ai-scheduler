@@ -245,6 +245,9 @@ type testingMode interface {
 }
 
 func makeBasePod(t testingMode, nodeName, objName, cpu, mem, extended string, ports []v1.ContainerPort) *v1.Pod {
+	return basePod(t, nodeName, objName, cpu, mem, extended, nil, ports)
+}
+func basePod(t testingMode, nodeName, objName, cpu, mem, extended string, annotations map[string]string, ports []v1.ContainerPort) *v1.Pod {
 	req := v1.ResourceList{}
 	if cpu != "" {
 		req = v1.ResourceList{
@@ -264,6 +267,7 @@ func makeBasePod(t testingMode, nodeName, objName, cpu, mem, extended string, po
 			UID:       types.UID(objName),
 			Namespace: "node_info_cache_test",
 			Name:      objName,
+			Annotations: annotations,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{

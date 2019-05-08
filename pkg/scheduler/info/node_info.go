@@ -180,6 +180,10 @@ func (r *Resource) Add(rl v1.ResourceList) {
 
 // Add is used to add the two resources
 func (r *Resource) Plus(rr *Resource) *Resource {
+	if r == nil || rr == nil {
+		return r
+	}
+
 	r.MilliCPU += rr.MilliCPU
 	r.Memory += rr.Memory
 	r.EphemeralStorage += rr.EphemeralStorage
@@ -720,6 +724,9 @@ func (n *NodeInfo) Filter(pod *v1.Pod) bool {
 
 //Sub subtracts two Resource objects.
 func (r *Resource) Sub(rr *Resource) *Resource {
+	if r == nil || rr == nil {
+		return r
+	}
 	r.MilliCPU -= rr.MilliCPU
 	r.Memory -= rr.Memory
 	r.AllowedPodNumber -= rr.AllowedPodNumber
@@ -727,7 +734,7 @@ func (r *Resource) Sub(rr *Resource) *Resource {
 
 	for rrName, rrQuant := range rr.ScalarResources {
 		if r.ScalarResources == nil {
-			return r
+			r.ScalarResources = map[v1.ResourceName]int64{}
 		}
 		r.ScalarResources[rrName] -= rrQuant
 	}

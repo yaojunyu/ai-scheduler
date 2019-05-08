@@ -132,7 +132,7 @@ type Cache interface {
 	Snapshot() *Snapshot
 
 	// NodeTree returns a node tree structure
-	NodeTree(poolName string) *NodeTree
+	NodeTree(poolName string) *schedulerinfo.NodeTree
 
 	// DeserveAllPools compute all pools' deserved resources  quota
 	DeserveAllPools() error

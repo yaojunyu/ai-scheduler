@@ -41,9 +41,6 @@ type PoolQueue struct {
 	// queues is queue map for pool name as key and podInfo heap as value
 	queues map[string]SchedulingQueue
 
-	// startCh to start a goroutine for pool
-	//startCh chan string
-
 	//predicates               map[string]predicates.FitPredicate
 	//priorityMetaProducer     priorities.PriorityMetadataProducer
 	//predicateMetaProducer    predicates.PredicateMetadataProducer

@@ -18,6 +18,7 @@ package fake
 
 import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -93,4 +94,4 @@ func (c *Cache) Snapshot() *schedulerinternalcache.Snapshot {
 }
 
 // NodeTree is a fake method for testing.
-func (c *Cache) NodeTree() *schedulerinternalcache.NodeTree { return nil }
+func (c *Cache) NodeTree() *info.NodeTree { return nil }

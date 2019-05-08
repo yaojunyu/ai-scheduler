@@ -137,10 +137,6 @@ func GetPodAnnotationsPoolName(pod *v1.Pod) string {
 	return name
 }
 
-//func BelongToDefaultPool(pod *v1.Pod) bool {
-//	return GetPodPoolName(pod) == DefaultPool
-//}
-
 func CalculatePodRequestResource(pod *v1.Pod) *Resource {
 	result := &Resource{}
 	for _, container := range pod.Spec.Containers {

@@ -667,13 +667,13 @@ func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct
 // printScheduler print all pools cache and pool queue detail
 func (sched *Scheduler) PrintPools() {
 	cache := sched.config.SchedulerCache
-	lineWidth := 140
+	lineWidth := 160
 
 	totalRes := cache.TotalAllocatableResource()
 	var log = fmt.Sprintf(`All Pools Detail:
-%-20s%-20s%-20s%-20s%-20s%-20s%-20s
+%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s
 %s`,
-		"Pools", "Resource(w)", "Allocatable", "Used", "Shared", "Pending", "Total",
+		"Pools", "Resource(w)", "Capacity", "Allocatable", "Used", "Shared", "Pending", "Total",
 		strings.Repeat("-", lineWidth),
 	)
 	keys := make([]string, 0, cache.NumPools())
@@ -692,12 +692,12 @@ func (sched *Scheduler) PrintPools() {
 			continue
 		}
 		detail := `
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20v%-20v%-20v%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20v%-20v%-20v%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
 %s`
 		poolName := p.Name()
 
@@ -706,22 +706,28 @@ func (sched *Scheduler) PrintPools() {
 			poolName = "Default"
 		}
 		log += fmt.Sprintf(detail,
-			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Allocatable().MilliCPU, p.Used().MilliCPU,
+			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Capacity().MilliCPU,
+			p.Allocatable().MilliCPU, p.Used().MilliCPU,
 			p.Shared().MilliCPU, pendingRes.MilliCPU, totalRes.MilliCPU,
 
 			"", fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[info.ResourceGPU]),
-			p.Allocatable().ScalarResources[info.ResourceGPU], p.Used().ScalarResources[info.ResourceGPU],
-			p.Shared().ScalarResources[info.ResourceGPU], pendingRes.GetValue(info.ResourceGPU), totalRes.ScalarResources[info.ResourceGPU],
+			p.Capacity().ScalarResources[info.ResourceGPU], p.Allocatable().ScalarResources[info.ResourceGPU],
+			p.Used().ScalarResources[info.ResourceGPU], p.Shared().ScalarResources[info.ResourceGPU],
+			pendingRes.GetValue(info.ResourceGPU), totalRes.ScalarResources[info.ResourceGPU],
 
-			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Allocatable().Memory, p.Used().Memory,
+			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Capacity().Memory,
+			p.Allocatable().Memory, p.Used().Memory,
 			p.Shared().Memory, pendingRes.Memory, totalRes.Memory,
 
-			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]), p.Allocatable().EphemeralStorage,
+			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]),
+			p.Capacity().EphemeralStorage, p.Allocatable().EphemeralStorage,
 			p.Used().EphemeralStorage, p.Shared().EphemeralStorage, pendingRes.EphemeralStorage, totalRes.EphemeralStorage,
 
-			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", cache.NumNodes(),
+			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/cache.NodeTree(p.Name()).NumNodes(),
+			cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", cache.NumNodes(),
 
-			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]), p.Allocatable().AllowedPodNumber,
+			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]),
+			p.Capacity().AllowedPodNumber, p.Allocatable().AllowedPodNumber,
 			p.Used().AllowedPodNumber, p.Shared().AllowedPodNumber, pendingRes.AllowedPodNumber, totalRes.AllowedPodNumber,
 
 			strings.Repeat("-", lineWidth),

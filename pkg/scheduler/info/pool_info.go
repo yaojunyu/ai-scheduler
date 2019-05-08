@@ -6,7 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog"
 )
 const (
 	// ResourceGPU need to follow https://github.com/NVIDIA/k8s-device-plugin/blob/66a35b71ac4b5cbfb04714678b548bd77e5ba719/server.go#L20
@@ -17,12 +17,15 @@ const (
 	DefaultPoolName = ""
 )
 type PoolInfo struct {
-	name string
 	pool *v1alpha1.Pool
 
-	// All nodes matched to this pool, it's a node name set
-	nodes sets.String
+	// All nodes matched to this pool, key as node name
+	nodes map[string]*NodeInfo
+	// node trees
+	nodeTree *NodeTree
 
+	// All nodes' capacity sum
+	capacity *Resource
 	// Resources divided to the pool
 	allocatable *Resource
 	// All resources used by pods
@@ -34,79 +37,79 @@ type PoolInfo struct {
 
 func NewPoolInfo() *PoolInfo {
 	pi := &PoolInfo{
-		name:        "",
+		pool: 		 nil,
+		nodes:       map[string]*NodeInfo{},
+		nodeTree:    newNodeTree(nil),
+
+		capacity: 	 &Resource{},
 		allocatable: &Resource{},
 		used:        &Resource{},
 		shared:      &Resource{},
-
-		nodes: sets.NewString(),
 	}
 	return pi
 }
 
 // AddNode add node to tool, and compute all resources value
-func (p *PoolInfo) AddNode(node *v1.Node) error {
-	if p == nil || node == nil {
-		return nil
-	}
-	p.allocatable.Add(node.Status.Allocatable)
-	p.nodes.Insert(node.Name)
-	return nil
-}
+//func (p *PoolInfo) AddNode(node *v1.Node) error {
+//	if p == nil || node == nil {
+//		return nil
+//	}
+//	p.allocatable.Add(node.Status.Allocatable)
+//	// TODO compute used and shared resources
+//	p.nodes.Insert(node.Name)
+//	return nil
+//}
 
 // RemoveNode remove node from pool
-func (p *PoolInfo) RemoveNode(node *v1.Node) error {
-	if p == nil || node == nil {
-		return nil
-	}
-	if !p.nodes.Has(node.Name) {
-		return fmt.Errorf("ant remove node %v not in pool %v", node.Name, p.name)
-	}
-	p.allocatable.Sub(NewResource(node.Status.Allocatable))
-	p.nodes.Delete(node.Name)
-	return nil
-}
+//func (p *PoolInfo) RemoveNode(node *v1.Node) error {
+//	if p == nil || node == nil {
+//		return nil
+//	}
+//	if !p.nodes.Has(node.Name) {
+//		return fmt.Errorf("cant remove node %v not in pool %v", node.Name, p.Name())
+//	}
+//	p.allocatable.Sub(NewResource(node.Status.Allocatable))
+//	// TODO compute used and shared resources
+//	p.nodes.Delete(node.Name)
+//	return nil
+//}
 
-func (p *PoolInfo) UpdateNode(oldNode *v1.Node, newNode *v1.Node) error {
-	if p == nil || oldNode == nil || newNode == nil || oldNode == newNode {
-		return nil
-	}
-	if oldNode.UID != newNode.UID {
-		return fmt.Errorf("update node failed don't has same id")
-	}
-
-	if err := p.RemoveNode(oldNode); err != nil {
-		return err
-	}
-	p.nodes.Delete(oldNode.Name)
-
-	if err := p.AddNode(newNode); err != nil {
-		return err
-	}
-	p.nodes.Insert(newNode.Name)
-	return nil
-}
+//func (p *PoolInfo) UpdateNode(oldNode *v1.Node, newNode *v1.Node) error {
+//	if p == nil || oldNode == nil || newNode == nil || oldNode == newNode {
+//		return nil
+//	}
+//	if oldNode.UID != newNode.UID {
+//		return fmt.Errorf("update node failed don't has same id")
+//	}
+//
+//	if err := p.RemoveNode(oldNode); err != nil {
+//		return err
+//	}
+//	p.nodes.Delete(oldNode.Name)
+//
+//	if err := p.AddNode(newNode); err != nil {
+//		return err
+//	}
+//	p.nodes.Insert(newNode.Name)
+//	return nil
+//}
 
 // AddPod compute used and shared
 func (p *PoolInfo) AddPod(pod *v1.Pod) error {
 	res := GetResourceRequestForPool(pod)
 	p.used.Plus(res)
-
 	if !p.MatchPod(pod) {
 		p.shared.Plus(res)
 	}
-
 	return nil
 }
 
 func (p *PoolInfo) RemovePod(pod *v1.Pod) error {
 	res := GetResourceRequestForPool(pod)
 	p.used.Sub(res)
-
 	if !p.MatchPod(pod) {
 		p.shared.Sub(res)
 	}
-	// we ignore pod if nod exists
 	return nil
 }
 
@@ -114,76 +117,61 @@ func (p *PoolInfo) UpdatePod(oldPod, newPod *v1.Pod) error {
 	if p == nil || oldPod == nil || newPod == nil || oldPod == newPod {
 		return nil
 	}
+	// TODO check if the pod is in pool
 	p.RemovePod(oldPod)
 	p.AddPod(newPod)
 	return nil
 }
 
 func (p *PoolInfo) GetPool() *v1alpha1.Pool {
-	if p == nil {
-		return nil
-	}
 	return p.pool
 }
 
 // AddNode add node to tool, and compute all resources value
-func (p *PoolInfo) AddNodeInfo(node *NodeInfo) error {
-	if p == nil || node == nil {
+func (p *PoolInfo) AddNodeInfo(ni *NodeInfo) error {
+	if p == nil || ni == nil {
 		return nil
 	}
-	p.allocatable.Plus(node.allocatableResource)
-	p.nodes.Insert(node.Node().Name)
-	for _, pod := range node.pods {
+	if ni.node == nil {
+		klog.Warningf("node in nodeinfo is nil")
+		return nil
+	}
+	if _, ok := p.nodes[ni.node.Name]; ok {
+		return fmt.Errorf("nodeinf %v already exist in pool %v", ni.node.Name, p.Name())
+	}
+	p.nodes[ni.node.Name] = ni
+	p.nodeTree.AddNode(ni.node)
+	p.capacity.Add(ni.node.Status.Capacity)
+	p.allocatable.Plus(ni.allocatableResource)
+	for _, pod := range ni.pods {
 		p.AddPod(pod)
 	}
 	return nil
 }
 
 // RemoveNode remove node from pool
-func (p *PoolInfo) RemoveNodeInfo(node *NodeInfo) error {
-	if p == nil || node == nil {
+func (p *PoolInfo) RemoveNodeInfo(ni *NodeInfo) error {
+	if p == nil || ni == nil {
 		return nil
 	}
-	p.allocatable.Sub(node.allocatableResource)
-	p.nodes.Delete(node.Node().Name)
-	for _, pod := range node.pods {
+	if _, ok := p.nodes[ni.node.Name]; !ok {
+		return fmt.Errorf("nodeinfo %v not exists in pool %v", ni.Node().Name, p.Name())
+	}
+	delete(p.nodes, ni.node.Name)
+	if err := p.nodeTree.RemoveNode(ni.node); err != nil {
+		return err
+	}
+	p.capacity.Sub(NewResource(ni.node.Status.Capacity))
+	p.allocatable.Sub(ni.allocatableResource)
+	for _, pod := range ni.pods {
 		p.RemovePod(pod)
 	}
 	return nil
 }
 
-//func (p *PoolInfo) AddNodeInfos(nodes []*NodeInfo) error {
-//	if nodes == nil || len(nodes) == 0 {
-//		return nil
-//	}
-//	for _, node := range nodes {
-//		p.AddNodeInfo(node)
-//	}
-//	return nil
-//}
-//
-//func (p *PoolInfo) RemoveNodeInfos(nodes []*NodeInfo) error {
-//	if nodes == nil || len(nodes) == 0 {
-//		return nil
-//	}
-//	for _, node := range nodes {
-//		p.RemoveNodeInfo(node)
-//	}
-//	return nil
-//}
-
 // SetPool sets the overall pool information
 func (p *PoolInfo) SetPool(pool *v1alpha1.Pool) error {
-	if p == nil || pool == nil {
-		return nil
-	}
-
-	p.name = pool.Name
 	p.pool = pool
-
-	// TODO set other fields
-
-	//_, err := p.MatchPoolNodes(nodes)
 	return nil
 }
 
@@ -193,9 +181,10 @@ func (p *PoolInfo) ClearPool() error {
 		return nil
 	}
 	p.pool = nil
-	p.allocatable = &Resource{}
-	p.used = &Resource{}
-	p.shared = &Resource{}
+	p.nodes = nil
+	p.allocatable = nil
+	p.used = nil
+	p.shared = nil
 
 	return nil
 }
@@ -229,17 +218,11 @@ func (p *PoolInfo) GetQuotaValue(name v1.ResourceName) int64 {
 	}
 }
 
-//func (p *PoolInfo) GetNodes() []*v1.Node {
-//	if p == nil {
-//		return nil
-//	}
-//	return p.nodes
-//}
 func (p *PoolInfo) NumNodes() int {
-	if p == nil {
+	if p == nil || p.nodes == nil {
 		return 0
 	}
-	return p.nodes.Len()
+	return p.nodeTree.numNodes
 }
 
 func (p *PoolInfo) Name() string {
@@ -249,28 +232,49 @@ func (p *PoolInfo) Name() string {
 	return p.pool.Name
 }
 
+func (p *PoolInfo) Capacity() *Resource {
+	if p == nil {
+		return nil
+	}
+	return p.capacity
+}
+
 func (p *PoolInfo) Allocatable() *Resource {
 	if p == nil {
-		return &Resource{}
+		return nil
 	}
 	return p.allocatable
 }
 
 func (p *PoolInfo) Used() *Resource {
 	if p == nil {
-		return &Resource{}
+		return nil
 	}
 	return p.used
 }
 
 func (p *PoolInfo) Shared() *Resource {
 	if p == nil {
-		return &Resource{}
+		return nil
 	}
 	return p.shared
 }
 
-func (p *PoolInfo) SetCapacity(resource *Resource) {
+func (p *PoolInfo) Nodes() map[string]*NodeInfo {
+	if p == nil {
+		return nil
+	}
+	return p.nodes
+}
+
+func (p *PoolInfo) NodeTree() *NodeTree {
+	if p == nil {
+		return nil
+	}
+	return p.nodeTree
+}
+
+func (p *PoolInfo) SetAllocatable(resource *Resource) {
 	if p == nil {
 		return
 	}
@@ -291,22 +295,23 @@ func (p *PoolInfo) SetShared(resource *Resource) {
 	p.shared = resource
 }
 
-func (p *PoolInfo) SetCapacityResource(name v1.ResourceName, value int64) {
-	if p == nil || value < 0 {
+func (p *PoolInfo) SetAllocatableResource(name v1.ResourceName, value int64) {
+	if p == nil {
 		return
 	}
-	switch name {
-	case v1.ResourceCPU:
-		p.allocatable.MilliCPU = value
-	case v1.ResourceMemory:
-		p.allocatable.Memory = value
-	case v1.ResourceEphemeralStorage:
-		p.allocatable.EphemeralStorage = value
-	case ResourceGPU:
-		p.allocatable.SetScalar(name, value)
-	default:
-		p.allocatable.SetScalar(name, value)
+	p.allocatable.SetValue(name, value)
+}
+
+func (p *PoolInfo) ContainsNode(nodeName string) bool {
+	if p == nil || nodeName == "" {
+		return false
 	}
+	for nn := range p.nodes {
+		if nn == nodeName {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *PoolInfo) MatchPod(pod *v1.Pod) bool {
@@ -317,7 +322,7 @@ func (p *PoolInfo) MatchPod(pod *v1.Pod) bool {
 }
 
 func (p *PoolInfo) MatchNode(node *v1.Node) bool {
-	if p == nil || node == nil || p.name == DefaultPoolName || p.pool == nil {
+	if p == nil || node == nil || p.IsDefaultPool() {
 		return false
 	}
 	// if build-in default pool always return false
@@ -344,6 +349,7 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 	return true
 }
 
+// TODO consider move nodeTree to pool struct the uncomment bellow function
 //func (p *PoolInfo) MatchPoolNodes(nodes []*v1.Node) (*Resource, error) {
 //	if nodes == nil || len(nodes) == 0 {
 //		klog.Warning("Not any nodes cached, will not filter nodes for Pool")
@@ -367,9 +373,12 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 //	return totalResource, nil
 //}
 
-//func (p *PoolInfo) IsDefaultPool() bool {
-//	return p != nil && p.Name() == DefaultPool
-//}
+func (p *PoolInfo) IsDefaultPool() bool {
+	if p == nil {
+		return false
+	}
+	return p.Name() == DefaultPoolName
+}
 
 func (p *PoolInfo) Weighted(name v1.ResourceName) bool {
 	if p == nil || p.pool == nil || p.pool.Spec.Weight == nil {

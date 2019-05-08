@@ -80,7 +80,7 @@ type schedulerCache struct {
 
 	// resource pools
 	pools map[string]*schedulerinfo.PoolInfo
-	nodeTrees map[string]*NodeTree
+	//nodeTrees map[string]*NodeTree
 }
 
 type podState struct {
@@ -114,7 +114,7 @@ func newSchedulerCache(ttl, period time.Duration, stop <-chan struct{}) *schedul
 
 		nodes:       make(map[string]*nodeInfoListItem),
 		//nodeTree:    newNodeTree(nil),
-		nodeTrees:   make(map[string]*NodeTree),
+		//nodeTrees:   make(map[string]*schedulerinfo.NodeTree),
 		assumedPods: make(map[string]bool),
 		podStates:   make(map[string]*podState),
 		imageStates: make(map[string]*imageState),
@@ -122,7 +122,6 @@ func newSchedulerCache(ttl, period time.Duration, stop <-chan struct{}) *schedul
 		pools:		 make(map[string]*schedulerinfo.PoolInfo),
 	}
 	// add nodeTree for default pool
-	cache.nodeTrees[schedulerinfo.DefaultPoolName] = newNodeTree(nil)
 	cache.pools[schedulerinfo.DefaultPoolName] = schedulerinfo.NewPoolInfo()
 	return cache
 }
@@ -397,13 +396,22 @@ func (cache *schedulerCache) removePod(pod *v1.Pod) error {
 
 // AddPodToPool
 func (cache *schedulerCache) addPodToPool(pod *v1.Pod) error {
-	poolName := cache.matchPoolForPod(pod)
+	poolName := cache.belongToWhichPool(pod)
 	pool, exists := cache.pools[poolName]
 	if !exists {
 		return fmt.Errorf("pod %s pool %s not exists", pod.Name, poolName)
 	}
 	pool.AddPod(pod)
 	return nil
+}
+
+func (cache *schedulerCache) removePodFromPool(pod *v1.Pod) error {
+	poolName := cache.belongToWhichPool(pod)
+	pool, ok := cache.pools[poolName]
+	if !ok {
+		return fmt.Errorf("pool %v not exsits", poolName)
+	}
+	return pool.RemovePod(pod)
 }
 
 func (cache *schedulerCache) updatePodInPool(oldPod, newPod *v1.Pod) error {
@@ -413,15 +421,6 @@ func (cache *schedulerCache) updatePodInPool(oldPod, newPod *v1.Pod) error {
 	cache.removePodFromPool(oldPod)
 	cache.removePodFromPool(newPod)
 	return cache.addPodToPool(newPod)
-}
-
-func (cache *schedulerCache) removePodFromPool(pod *v1.Pod) error {
-	poolName := cache.matchPoolForPod(pod)
-	pool, ok := cache.pools[poolName]
-	if !ok {
-		return fmt.Errorf("pool %v not exsits", poolName)
-	}
-	return pool.RemovePod(pod)
 }
 
 func (cache *schedulerCache) AddPod(pod *v1.Pod) error {
@@ -565,6 +564,14 @@ func (cache *schedulerCache) GetPod(pod *v1.Pod) (*v1.Pod, error) {
 }
 
 func (cache *schedulerCache) AddPool(pool *v1alpha1.Pool) error {
+	// check if is pool name is DefaultPoolName,
+	// if so don't add any nodes to it
+	// as default pool create by system, not conflict with manual created pool
+	// for preventing hold all nodes unexpect
+	if pool == nil || pool.Name == schedulerinfo.DefaultPoolName {
+		return fmt.Errorf("forbidden add pool which name is ''")
+	}
+
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
@@ -572,14 +579,12 @@ func (cache *schedulerCache) AddPool(pool *v1alpha1.Pool) error {
 	if !ok {
 		pi = schedulerinfo.NewPoolInfo()
 		cache.pools[pool.Name] = pi
-		cache.nodeTrees[pool.Name] = newNodeTree(nil)
 	}
 	pi.SetPool(pool)
 
 	for _, ni := range cache.nodes {
 		node := ni.info.Node()
 		if pi.MatchNode(node) {
-			cache.nodeTrees[pool.Name].addNode(node)
 			pi.AddNodeInfo(ni.info)
 		}
 	}
@@ -618,7 +623,6 @@ func (cache *schedulerCache) RemovePool(pool *v1alpha1.Pool) error {
 	err := cache.addToDefaultPool(poolInfo)
 	if err == nil {
 		delete(cache.pools, pool.Name)
-		delete(cache.nodeTrees, pool.Name)
 		poolInfo.ClearPool()
 	}
 	return err
@@ -649,11 +653,9 @@ func (cache *schedulerCache) addToDefaultPool(poolInfo *schedulerinfo.PoolInfo) 
 		return fmt.Errorf("build-in default pool not exists in scheduler cache")
 	}
 
-	for _, ni := range cache.getNodeInfos(poolInfo.Name()) {
-		cache.nodeTrees[schedulerinfo.DefaultPoolName].addNode(ni.Node())
+	for _, ni := range poolInfo.Nodes() {
 		defaultPoolInfo.AddNodeInfo(ni)
 	}
-	//return defaultPoolInfo.AddNodeInfos(cache.getNodeInfos(poolInfo.Name()))
 	return nil
 }
 
@@ -666,11 +668,9 @@ func (cache *schedulerCache) subFromDefaultPool(poolInfo *schedulerinfo.PoolInfo
 		return fmt.Errorf("build-in default pool not exists in scheduler cache")
 	}
 
-	for _, ni := range cache.getNodeInfos(poolInfo.Name()) {
-		cache.nodeTrees[schedulerinfo.DefaultPoolName].removeNode(ni.Node())
+	for _, ni := range poolInfo.Nodes() {
 		defaultPoolInfo.RemoveNodeInfo(ni)
 	}
-	//return defaultPoolInfo.RemoveNodeInfos(cache.getNodeInfos(poolInfo.Name()))
 	return nil
 }
 
@@ -688,12 +688,11 @@ func (cache *schedulerCache) AddNode(node *v1.Node) error {
 	cache.moveNodeInfoToHead(node.Name)
 
 	//cache.nodeTree.AddNode(node)
-	poolName := cache.matchPoolForNode(node)
-	cache.nodeTrees[poolName].AddNode(node)
-	cache.pools[poolName].AddNode(node)
-
 	cache.addNodeImageStates(node, n.info)
-	return n.info.SetNode(node)
+	n.info.SetNode(node)
+
+	poolName := cache.matchPoolForNode(node)
+	return cache.pools[poolName].AddNodeInfo(n.info)
 }
 
 func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
@@ -710,14 +709,20 @@ func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
 	cache.moveNodeInfoToHead(newNode.Name)
 
 	//cache.nodeTree.UpdateNode(oldNode, newNode)
+	cache.addNodeImageStates(newNode, n.info)
+	if err := n.info.SetNode(newNode); err != nil {
+		return err
+	}
+
 	oldPoolName := cache.matchPoolForNode(oldNode)
 	newPoolName := cache.matchPoolForNode(newNode)
-	//cache.nodeTrees[oldPoolName].RemoveNode(oldNode)
-	//cache.nodeTrees[newPoolName].AddNode(newNode)
-	cache.nodeTrees[oldPoolName].UpdateNode(oldNode, newNode)
-	cache.nodeTrees[newPoolName].UpdateNode(oldNode, newNode)
-	cache.addNodeImageStates(newNode, n.info)
-	return n.info.SetNode(newNode)
+	if err := cache.pools[oldPoolName].RemoveNodeInfo(cache.nodes[oldNode.Name].info); err != nil {
+		return err
+	}
+	if err := cache.pools[newPoolName].AddNodeInfo(n.info); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (cache *schedulerCache) matchPoolForNode(node *v1.Node) string {
@@ -730,26 +735,17 @@ func (cache *schedulerCache) matchPoolForNode(node *v1.Node) string {
 	return schedulerinfo.DefaultPoolName
 }
 
-func (cache *schedulerCache) matchPoolForPod(pod *v1.Pod) string {
+// belongToWhichPool
+func (cache *schedulerCache) belongToWhichPool(pod *v1.Pod) string {
 	// scheduled pod
 	if nodeName := pod.Spec.NodeName; nodeName != "" {
-		for pn, nt := range cache.nodeTrees {
-			for _, na := range nt.tree {
-				for _, nn := range na.nodes {
-					if nodeName == nn {
-						return pn
-					}
-				}
+		for _, pi := range cache.pools {
+			if pi.ContainsNode(nodeName) {
+				return pi.Name()
 			}
 		}
 	}
-
-	// if not a scheduled pod, get its annotainion
-	poolName := schedulerinfo.GetPodAnnotationsPoolName(pod)
-	if _, ok := cache.pools[poolName]; !ok {
-		return schedulerinfo.DefaultPoolName
-	}
-	return poolName
+	return schedulerinfo.DefaultPoolName
 }
 
 func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
@@ -774,10 +770,12 @@ func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
 	}
 
 	//cache.nodeTree.RemoveNode(node)
-	poolName := cache.matchPoolForNode(node)
-	cache.nodeTrees[poolName].RemoveNode(node)
-	cache.pools[poolName].RemoveNode(node)
 	cache.removeNodeImageStates(node)
+
+	poolName := cache.matchPoolForNode(node)
+	if err := cache.pools[poolName].RemoveNodeInfo(n.info); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -874,10 +872,10 @@ func (cache *schedulerCache) expirePod(key string, ps *podState) error {
 	return nil
 }
 
-func (cache *schedulerCache) NodeTree(poolName string) *NodeTree {
+func (cache *schedulerCache) NodeTree(poolName string) *schedulerinfo.NodeTree {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	return cache.nodeTrees[poolName]
+	return cache.pools[poolName].NodeTree()
 }
 
 // DeserveAllPools compute all pools resources deserved quota
@@ -917,7 +915,7 @@ func (cache *schedulerCache) calculateTotalQuota() *schedulerinfo.Resource {
 	var totalQuota = &schedulerinfo.Resource{}
 	for _, p := range cache.pools {
 		totalQuota.Add(p.GetQuota())
-		//p.SetCapacity(&schedulerinfo.Resource{})
+		//p.SetAllocatable(&schedulerinfo.Resource{})
 	}
 
 	return totalQuota
@@ -996,7 +994,7 @@ func (cache *schedulerCache) weightedPoolsSize(rn v1.ResourceName) int64 {
 //			}
 //		}
 //	}
-//	cache.pools[schedulerinfo.DefaultPool].SetCapacity(deserved)
+//	cache.pools[schedulerinfo.DefaultPool].SetAllocatable(deserved)
 //	return deserved
 //}
 
@@ -1009,7 +1007,7 @@ func (cache *schedulerCache) deserveWeightedPools(remain *schedulerinfo.Resource
 		for rn, tw := range totalWeights {
 			if !p.HasQuota(rn) && p.Weighted(rn) {
 				ratio := cache.calculateRatio(p, rn, tw)
-				p.SetCapacityResource(rn, int64(float64(remain.GetValue(rn)) * ratio))
+				p.SetAllocatableResource(rn, int64(float64(remain.GetValue(rn)) * ratio))
 			}
 
 		}
@@ -1045,15 +1043,15 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 					if overQuotaV > 0 {
 						if quotaV > overQuotaV {
 							delta := quotaV - overQuotaV
-							cache.pools[pool.Name].SetCapacityResource(n, delta)
+							cache.pools[pool.Name].SetAllocatableResource(n, delta)
 
 							overQuotaV = 0
 						} else {
-							cache.pools[pool.Name].SetCapacityResource(n, 0)
+							cache.pools[pool.Name].SetAllocatableResource(n, 0)
 							overQuotaV -= quotaV
 						}
 					} else {
-						cache.pools[pool.Name].SetCapacityResource(n, quotaV)
+						cache.pools[pool.Name].SetAllocatableResource(n, quotaV)
 					}
 				}
 			}
@@ -1063,7 +1061,7 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 			for _, p := range cache.pools {
 				if p.HasQuota(n) {
 					quotaV := p.GetQuotaValue(n)
-					p.SetCapacityResource(n, quotaV)
+					p.SetAllocatableResource(n, quotaV)
 				}
 			}
 			remain.SetValue(n, remainResV - totalResQuotaV)
@@ -1085,15 +1083,15 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 //			}
 //
 //			// compute deserved
-//			p.SetCapacity(res)
+//			p.SetAllocatable(res)
 //			//for _, rn := range res.ResourceNames() {
 //			//	//if !p.HasQuota(rn) && !p.Weighted(rn) {
 //			//		if res.GetValue(rn) > remain.GetValue(rn) {
-//			//			p.SetCapacityResource(rn, remain.GetValue(rn))
+//			//			p.SetAllocatableResource(rn, remain.GetValue(rn))
 //			//			remain.SetValue(rn, 0)
 //			//		} else {
 //			//			dsv := remain.GetValue(rn) - res.GetValue(rn)
-//			//			p.SetCapacityResource(rn, res.GetValue(rn))
+//			//			p.SetAllocatableResource(rn, res.GetValue(rn))
 //			//			remain.SetValue(rn, dsv)
 //			//		}
 //			//	//}
@@ -1137,24 +1135,6 @@ func (cache *schedulerCache) getNodes() []*v1.Node {
 	}
 
 	return nodes
-}
-
-func (cache *schedulerCache) getNodeInfos(poolName string) []*schedulerinfo.NodeInfo {
-	nt, ok := cache.nodeTrees[poolName]
-	result := make([]*schedulerinfo.NodeInfo, 0, nt.numNodes)
-	if !ok {
-		klog.Errorf("Error: nodeTrees not exists for pool %v", poolName)
-		return nil
-	}
-
-	for _, na := range nt.tree {
-		for _, nn := range na.nodes {
-			if node, ok := cache.nodes[nn]; ok {
-				result = append(result, node.info)
-			}
-		}
-	}
-	return result
 }
 
 func (cache *schedulerCache) getPools() []interface{} {

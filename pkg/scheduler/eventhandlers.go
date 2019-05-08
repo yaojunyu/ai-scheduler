@@ -106,7 +106,7 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 		return
 	}
 
-	//sched.print()
+	sched.PrintPools()
 	// notify start scheduling queue
 	go func() {
 		sched.config.StartSchedulingQueue <- pool.Name
@@ -129,7 +129,7 @@ func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
 		klog.Errorf("scheduler cache UpdatePool failed: %v", err)
 	}
 
-	//sched.print()
+	sched.PrintPools()
 }
 
 func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
@@ -159,7 +159,6 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 		return
 	}
 
-	//sched.print()
 	// stop scheduling goroutine before removing
 	sched.config.PoolQueue.CloseQ(pool.Name)
 
@@ -167,6 +166,8 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 		klog.Errorf("scheduler PoolQueue RemoveQueue failed: %v", err)
 		return
 	}
+
+	sched.PrintPools()
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {
@@ -179,12 +180,13 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.AddNode(node); err != nil {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
 	}
-	//sched.print()
+	sched.PrintPools()
 
 	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
+	klog.V(4).Infof("Update Node In Cache")
 	oldNode, ok := oldObj.(*v1.Node)
 	if !ok {
 		klog.Errorf("cannot convert oldObj to *v1.Node: %v", oldObj)
@@ -208,6 +210,8 @@ func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
 	if sched.config.PoolQueue.NumUnschedulablePods() == 0 || nodeSchedulingPropertiesChanged(newNode, oldNode) {
 		sched.config.PoolQueue.MoveAllToActiveQueue()
 	}
+
+	sched.PrintPools()
 }
 
 func (sched *Scheduler) deleteNodeFromCache(obj interface{}) {
