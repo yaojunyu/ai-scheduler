@@ -19,6 +19,8 @@ package factory
 import (
 	"errors"
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions"
+	"k8s.io/client-go/tools/cache"
 	"reflect"
 	"testing"
 	"time"
@@ -27,9 +29,9 @@ import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	latestschedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/latest"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +42,6 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	fakeV1 "k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	clienttesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/cache"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 )
 
@@ -254,11 +255,13 @@ func TestDefaultErrorFunc(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	queue := &internalqueue.FIFO{FIFO: cache.NewFIFO(cache.MetaNamespaceKeyFunc)}
+	poolQueue := internalqueue.NewPoolQueue(stopCh)
+	poolQueue.SetQueue("", queue)
 	schedulerCache := schedulerinternalcache.New(30*time.Second, stopCh)
 	podBackoff := util.CreatePodBackoff(1*time.Millisecond, 1*time.Second)
-	errFunc := MakeDefaultErrorFunc(client, podBackoff, queue, schedulerCache, stopCh)
+	errFunc := MakeDefaultErrorFunc(client, podBackoff, poolQueue, schedulerCache, stopCh)
 
-	errFunc(testPod, nil)
+	errFunc("", testPod, nil)
 
 	for {
 		// This is a terrible way to do this but I plan on replacing this
@@ -425,9 +428,11 @@ func TestInvalidFactoryArgs(t *testing.T) {
 
 func newConfigFactory(client clientset.Interface, hardPodAffinitySymmetricWeight int32, stopCh <-chan struct{}) Configurator {
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
+	asinformerFactory := externalversions.NewSharedInformerFactory(nil, 0)
 	return NewConfigFactory(&ConfigFactoryArgs{
 		v1.DefaultSchedulerName,
 		client,
+		asinformerFactory.Resource().V1alpha1().Pools(),
 		informerFactory.Core().V1().Nodes(),
 		informerFactory.Core().V1().Pods(),
 		informerFactory.Core().V1().PersistentVolumes(),

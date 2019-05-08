@@ -534,7 +534,8 @@ func TestGenericSchedulerWithExtenders(t *testing.T) {
 			for _, name := range test.nodes {
 				cache.AddNode(createNode(name))
 			}
-			queue := internalqueue.NewSchedulingQueue(nil)
+			//queue := internalqueue.NewSchedulingQueue(nil)
+			queue := internalqueue.NewPoolQueue(nil)
 			scheduler := NewGenericScheduler(
 				cache,
 				queue,
@@ -551,7 +552,7 @@ func TestGenericSchedulerWithExtenders(t *testing.T) {
 				false,
 				schedulerapi.DefaultPercentageOfNodesToScore)
 			podIgnored := &v1.Pod{}
-			result, err := scheduler.Schedule(podIgnored, schedulertesting.FakeNodeLister(makeNodeList(test.nodes)))
+			result, err := scheduler.Schedule("", podIgnored, schedulertesting.FakeNodeLister(makeNodeList(test.nodes)))
 			if test.expectsErr {
 				if err == nil {
 					t.Errorf("Unexpected non-error, result %+v", result)

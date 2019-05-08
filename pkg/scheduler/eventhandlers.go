@@ -102,7 +102,7 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 	}
 
 	if _, err := sched.config.PoolQueue.AddQueue(pool.Name, sched.config.StopEverything); err != nil {
-		klog.Error("scheduler queue AddQueue failed: %v", err)
+		klog.Errorf("scheduler queue AddQueue failed: %v", err)
 		return
 	}
 

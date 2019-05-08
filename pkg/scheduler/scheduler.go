@@ -634,7 +634,7 @@ func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct
 	for {
 		select {
 		case <-stopCh:
-			klog.V(3).Infoln("Stopping scheduling for pool %s", poolName)
+			klog.V(3).Infof("Stopping scheduling for pool %s", poolName)
 			return
 		default:
 		}

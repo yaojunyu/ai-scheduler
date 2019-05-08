@@ -59,7 +59,7 @@ func NewPoolQueue(stopCh <-chan struct{}) *PoolQueue {
 	pq.cond.L = &pq.lock
 
 	// init queue for pod that not belong to any pool
-	pq.queues[info.DefaultPoolName] = NewSchedulingQueue(pq.poolQueuePodPriorityComp(info.DefaultPoolName), stopCh)
+	pq.queues[info.DefaultPoolName] = NewSchedulingQueueWithLessFunc(pq.poolQueuePodPriorityComp(info.DefaultPoolName), stopCh)
 
 	return pq
 }
@@ -73,13 +73,20 @@ func (pq *PoolQueue) GetQueue(poolName string) (SchedulingQueue, error) {
 	return nil, fmt.Errorf("queue for pool %s not found", poolName)
 }
 
+// JUST for test
+func (pq *PoolQueue) SetQueue(poolName string, queue SchedulingQueue) {
+	pq.lock.Lock()
+	defer pq.lock.Unlock()
+	pq.queues[poolName] = queue
+}
+
 // AddPoolQ
 func (pq *PoolQueue) AddQueue(poolName string, stopCh <-chan struct{}) (SchedulingQueue, error) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	q, ok := pq.queues[poolName]
 	if !ok {
-		q = NewSchedulingQueue(pq.poolQueuePodPriorityComp(poolName), stopCh)
+		q = NewSchedulingQueueWithLessFunc(pq.poolQueuePodPriorityComp(poolName), stopCh)
 		pq.queues[poolName] = q
 	}
 	return q, nil

@@ -469,7 +469,8 @@ func TestGenericScheduler(t *testing.T) {
 
 			scheduler := NewGenericScheduler(
 				cache,
-				internalqueue.NewSchedulingQueue(nil),
+				internalqueue.NewPoolQueue(nil),
+				//internalqueue.NewSchedulingQueue(nil),
 				test.predicates,
 				algorithmpredicates.EmptyPredicateMetadataProducer,
 				test.prioritizers,
@@ -482,7 +483,7 @@ func TestGenericScheduler(t *testing.T) {
 				test.alwaysCheckAllPredicates,
 				false,
 				schedulerapi.DefaultPercentageOfNodesToScore)
-			result, err := scheduler.Schedule(test.pod, schedulertesting.FakeNodeLister(makeNodeList(test.nodes)))
+			result, err := scheduler.Schedule("", test.pod, schedulertesting.FakeNodeLister(makeNodeList(test.nodes)))
 
 			if !reflect.DeepEqual(err, test.wErr) {
 				t.Errorf("Unexpected error: %v, expected: %v", err, test.wErr)
@@ -505,7 +506,8 @@ func makeScheduler(predicates map[string]algorithmpredicates.FitPredicate, nodes
 
 	s := NewGenericScheduler(
 		cache,
-		internalqueue.NewSchedulingQueue(nil),
+		internalqueue.NewPoolQueue(nil),
+		//internalqueue.NewSchedulingQueue(nil),
 		predicates,
 		algorithmpredicates.EmptyPredicateMetadataProducer,
 		prioritizers,
@@ -523,7 +525,7 @@ func TestFindFitAllError(t *testing.T) {
 	nodes := makeNodeList([]string{"3", "2", "1"})
 	scheduler := makeScheduler(predicates, nodes)
 
-	_, predicateMap, err := scheduler.findNodesThatFit(&v1.Pod{}, nodes)
+	_, predicateMap, err := scheduler.findNodesThatFit("", &v1.Pod{}, nodes)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -552,7 +554,7 @@ func TestFindFitSomeError(t *testing.T) {
 	scheduler := makeScheduler(predicates, nodes)
 
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "1", UID: types.UID("1")}}
-	_, predicateMap, err := scheduler.findNodesThatFit(pod, nodes)
+	_, predicateMap, err := scheduler.findNodesThatFit("", pod, nodes)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -1431,7 +1433,8 @@ func TestPreempt(t *testing.T) {
 			}
 			scheduler := NewGenericScheduler(
 				cache,
-				internalqueue.NewSchedulingQueue(nil),
+				internalqueue.NewPoolQueue(nil),
+				//internalqueue.NewSchedulingQueue(nil),
 				map[string]algorithmpredicates.FitPredicate{"matches": algorithmpredicates.PodFitsResources},
 				algorithmpredicates.EmptyPredicateMetadataProducer,
 				[]priorities.PriorityConfig{{Function: numericPriority, Weight: 1}},

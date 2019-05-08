@@ -96,13 +96,18 @@ type SchedulingQueue interface {
 
 // NewSchedulingQueue initializes a new scheduling queue. If pod priority is
 // enabled a priority queue is returned. If it is disabled, a FIFO is returned.
-func NewSchedulingQueue(activeQComp util.LessFunc, stop <-chan struct{}) SchedulingQueue {
+func NewSchedulingQueueWithLessFunc(activeQComp util.LessFunc, stop <-chan struct{}) SchedulingQueue {
 	if util.PodPriorityEnabled() {
 		return NewPriorityQueueWithLessFunc(activeQComp, stop)
 	}
 	return NewFIFO()
 }
-
+func NewSchedulingQueue(stop <-chan struct{}) SchedulingQueue {
+	if util.PodPriorityEnabled() {
+		return NewPriorityQueue(stop)
+	}
+	return NewFIFO()
+}
 // FIFO is basically a simple wrapper around cache.FIFO to make it compatible
 // with the SchedulingQueue interface.
 type FIFO struct {
