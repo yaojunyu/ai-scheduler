@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+  namespace: kube-system
+data:
+  kubeschedulerconfig.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1alpha1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: {{ .Values.leaderElect }}
+      leaseDuration: {{ .Values.leaseDuration }}
+      renewDeadline: {{ .Values.renewDeadline }}
+      retryPeriod: {{ .Values.retryPeriod }}
+      lockObjectNamespace: kube-system
+      lockObjectName: {{ .Chart.Name }}
+    schedulerName: {{ .Chart.Name }}
+    healthzBindAddress: 0.0.0.0:{{ .Values.healthzPort }}
+    metricsBindAddress: 0.0.0.0:{{ .Values.healthzPort }}
+    disablePreemption: true

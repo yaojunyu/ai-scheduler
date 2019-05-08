@@ -1,24 +1,74 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-scheduler
+  name: {{ .Chart.Name }}
+  namespace: kube-system
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
   labels:
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+    hel.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+    component: scheduler
+    tier: control-plane
+    app: {{ .Chart.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: ai-scheduler
+      app: {{ .Chart.Name }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:
-        app: ai-scheduler
+        component: scheduler
+        tier: control-plane
+        app: {{ .Chart.Name }}
     spec:
       containers:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        args: ["--logtostderr", "--v", "3"]
+        command:
+          - /usr/local/bin/ai-scheduler
+          - --config=/etc/kubernetes/kubeschedulerconfig.yaml
+          - --secure-port={{ .Values.securePort }}
+          - --v=4
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        livenessProbe:
+          httpGet:
+            host: 127.0.0.1
+            port: {{ .Values.healthzPort }}
+            scheme: HTTP
+            path: /healthz
+          initialDelaySeconds: 15
+        readinessProbe:
+          httpGet:
+            host: 127.0.0.1
+            port: {{ .Values.healthzPort }}
+            scheme: HTTP
+            path: /healthz
         resources:
 {{ toYaml .Values.resources | indent 10 }}
-
+        securityContext:
+          privileged: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - name: scheduler-config-volume
+            mountPath: /etc/kubernetes/
+      volumes:
+        - name: scheduler-config-volume
+          configMap:
+            name: {{ .Chart.Name }}-config
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      nodeSelector:
+        kubernetes.io/role: master
+      priorityClassName: system-cluster-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccountName: {{ .Chart.Name }}
+      terminationGracePeriodSeconds: 30

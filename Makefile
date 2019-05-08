@@ -29,15 +29,19 @@ init:
 
 rel_bins:
 	go get github.com/mitchellh/gox
-	#Build ai-scheduler binary
+	# Build ai-scheduler binary
 	CGO_ENABLED=0 gox -osarch=${REL_OSARCH} -ldflags ${LD_FLAGS} \
 	-output=${BIN_DIR}/{{.OS}}/{{.Arch}}/ai-scheduler ./cmd/ai-scheduler
 
 images: rel_bins
-	#Build ai-scheduler images
+	# Build ai-scheduler images
 	cp ${BIN_DIR}/${REL_OSARCH}/ai-scheduler ./deployment/images/
 	docker build ./deployment/images -t $(IMAGE_PREFIX)/ai-scheduler:${RELEASE_VER}
 	rm -f ./deployment/images/ai-scheduler
+
+push: images
+	# Push images
+	docker push $(IMAGE_PREFIX)/ai-scheduler:${RELEASE_VER}
 
 run-test:
 	hack/make-rules/test.sh $(WHAT) $(TESTS)
