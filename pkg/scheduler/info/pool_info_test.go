@@ -5,7 +5,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"reflect"
 	"testing"
 )
@@ -15,11 +14,14 @@ const ErrorF = "\nexpected: %#v, \n     got: %#v"
 func TestNewPoolInfo(t *testing.T) {
 	poolName := ""
 	expected := &PoolInfo{
+		pool: 		 nil,
+		nodes:       map[string]*NodeInfo{},
+		nodeTree:    newNodeTree(nil),
+
+		capacity: 	 &Resource{},
 		allocatable: &Resource{},
 		used:        &Resource{},
 		shared:      &Resource{},
-
-		nodes: sets.NewString(),
 	}
 
 	poolInfo := NewPoolInfo()
@@ -28,164 +30,6 @@ func TestNewPoolInfo(t *testing.T) {
 	}
 	if !reflect.DeepEqual(poolInfo, expected) {
 		t.Errorf(ErrorF, expected, poolInfo)
-	}
-}
-
-func TestPoolInfoAddNode(t *testing.T) {
-	nodeName := "test-node"
-	testNode := &v1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: nodeName,
-		},
-		Status: v1.NodeStatus{
-			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *resource.NewMilliQuantity(1000, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(1000, resource.BinarySI),
-				"pods":            *resource.NewQuantity(100, resource.DecimalSI),
-			},
-		},
-	}
-	expected := &PoolInfo{
-		nodes: sets.NewString(nodeName),
-
-		allocatable: &Resource{
-			MilliCPU: 1000,
-			Memory: 1000,
-			AllowedPodNumber: 100,
-		},
-		used:        &Resource{},
-		shared:      &Resource{},
-
-	}
-
-	testPoolInfo := NewPoolInfo()
-	testPoolInfo.AddNode(testNode)
-	if !testPoolInfo.nodes.Has(nodeName) {
-		t.Errorf("nodes not added the node name")
-	}
-
-	if !reflect.DeepEqual(testPoolInfo, expected) {
-		t.Errorf(ErrorF, testPoolInfo, expected)
-	}
-}
-
-func TestPoolInfoRemoveNode(t *testing.T) {
-	nodeName := "test-node"
-	testNode := &v1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: nodeName,
-		},
-		Status: v1.NodeStatus{
-			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *resource.NewMilliQuantity(1000, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(1000, resource.BinarySI),
-				"pods":            *resource.NewQuantity(100, resource.DecimalSI),
-			},
-		},
-	}
-	testHasNodePoolInfoExpected := &PoolInfo{
-		nodes: sets.NewString(),
-
-		allocatable: &Resource{
-			MilliCPU: -1000,
-			Memory: -1000,
-			AllowedPodNumber: -100,
-		},
-		used:        &Resource{},
-		shared:      &Resource{},
-
-	}
-
-	testHasNodePoolInfo := &PoolInfo{
-		allocatable: &Resource{},
-		used:        &Resource{},
-		shared:      &Resource{},
-
-		nodes: sets.NewString(nodeName),
-	}
-
-
-	testHasNodePoolInfo.RemoveNode(testNode)
-	if testHasNodePoolInfo.nodes.Has(nodeName) {
-		t.Errorf("nodes not remove the node name")
-	}
-	if !reflect.DeepEqual(testHasNodePoolInfo, testHasNodePoolInfoExpected) {
-		t.Errorf(ErrorF, testHasNodePoolInfoExpected, testHasNodePoolInfo)
-	}
-
-	testNoNodePoolInfo := &PoolInfo{
-		allocatable: &Resource{},
-		used:        &Resource{},
-		shared:      &Resource{},
-
-		nodes: sets.NewString(),
-	}
-	testNoNodePoolInfoExpected := &PoolInfo{
-		allocatable: &Resource{},
-		used:        &Resource{},
-		shared:      &Resource{},
-
-		nodes: sets.NewString(),
-	}
-	err := testNoNodePoolInfo.RemoveNode(testNode)
-	if err == nil {
-		t.Errorf("remove node not exist not return error")
-	}
-	if !reflect.DeepEqual(testNoNodePoolInfo, testNoNodePoolInfoExpected) {
-		t.Errorf(ErrorF, testNoNodePoolInfoExpected, testNoNodePoolInfo)
-	}
-}
-
-func TestPoolInfoUpdateNode(t *testing.T) {
-	nodeName := "test-node"
-	oldNode := &v1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: nodeName,
-		},
-		Status: v1.NodeStatus{
-			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *resource.NewMilliQuantity(1000, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(1000, resource.BinarySI),
-				"pods":            *resource.NewQuantity(100, resource.DecimalSI),
-			},
-		},
-	}
-	newNode := &v1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: nodeName,
-		},
-		Status: v1.NodeStatus{
-			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *resource.NewMilliQuantity(800, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(800, resource.BinarySI),
-				"pods":            *resource.NewQuantity(80, resource.DecimalSI),
-			},
-		},
-	}
-	expected := &PoolInfo{
-		allocatable: &Resource{
-			MilliCPU: 800,
-			Memory: 800,
-			AllowedPodNumber: 80,
-		},
-		used:        &Resource{},
-		shared:      &Resource{},
-
-		nodes: sets.NewString(nodeName),
-	}
-
-	testHasNodePoolInfo := NewPoolInfo()
-	testHasNodePoolInfo.AddNode(oldNode)
-	testHasNodePoolInfo.UpdateNode(oldNode, newNode)
-	if !reflect.DeepEqual(testHasNodePoolInfo, expected) {
-		t.Errorf(ErrorF, testHasNodePoolInfo, expected)
-	}
-
-	testNoNodePoolInfo := NewPoolInfo()
-	testNoNodePoolInfo.UpdateNode(oldNode, newNode)
-	expected = NewPoolInfo()
-	if !reflect.DeepEqual(testNoNodePoolInfo, expected) {
-		t.Errorf(ErrorF, expected, testNoNodePoolInfo)
 	}
 }
 
@@ -207,7 +51,7 @@ func TestPoolInfoAddPod(t *testing.T) {
 		used:        &Resource{},
 		shared:      &Resource{},
 
-		nodes: sets.NewString(),
+		nodes: map[string]*NodeInfo{},
 	}
 
 	expected := &PoolInfo{
@@ -228,7 +72,7 @@ func TestPoolInfoAddPod(t *testing.T) {
 			AllowedPodNumber: 2,
 		},
 
-		nodes: sets.NewString(),
+		nodes: map[string]*NodeInfo{},
 	}
 	for _, pod := range pods {
 		testPool.AddPod(pod)
@@ -263,7 +107,7 @@ func TestPoolInfoRemovePod(t *testing.T) {
 			AllowedPodNumber: 2,
 		},
 
-		nodes: sets.NewString(),
+		nodes: map[string]*NodeInfo{},
 	}
 
 	expected := &PoolInfo{
@@ -284,7 +128,7 @@ func TestPoolInfoRemovePod(t *testing.T) {
 			AllowedPodNumber: 2,
 		},
 
-		nodes: sets.NewString(),
+		nodes: map[string]*NodeInfo{},
 	}
 	for _, pod := range pods {
 		testPool.RemovePod(pod)
@@ -320,7 +164,7 @@ func TestPoolInfoUpdatePod(t *testing.T) {
 			AllowedPodNumber: 2,
 		},
 
-		nodes: sets.NewString(),
+		nodes: map[string]*NodeInfo{},
 	}
 
 	expected := &PoolInfo{
@@ -341,7 +185,7 @@ func TestPoolInfoUpdatePod(t *testing.T) {
 			AllowedPodNumber: 2,
 		},
 
-		nodes: sets.NewString(),
+		nodes: map[string]*NodeInfo{},
 	}
 
 	testPool.UpdatePod(oldPod, newPod)
@@ -367,7 +211,7 @@ func TestPoolInfoUpdatePod(t *testing.T) {
 			AllowedPodNumber: 3,
 		},
 
-		nodes: sets.NewString(),
+		nodes: map[string]*NodeInfo{},
 	}
 	if !reflect.DeepEqual(testPool, expected) {
 		t.Errorf(ErrorF, expected, testPool)
@@ -377,12 +221,18 @@ func TestPoolInfoUpdatePod(t *testing.T) {
 func TestPoolInfoAddNodeInfo(t *testing.T) {
 	testPoolInfo := NewPoolInfo()
 	nodeName := "test-node"
-	nodeInfo := &NodeInfo{
-		node: &v1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: nodeName,
+	testNode := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nodeName,
+		},
+		Status: v1.NodeStatus{
+			Capacity: map[v1.ResourceName]resource.Quantity{
+
 			},
 		},
+	}
+	nodeInfo := &NodeInfo{
+		node: testNode,
 		allocatableResource: &Resource{
 			MilliCPU: 30000,
 			Memory: 64000,
@@ -393,7 +243,13 @@ func TestPoolInfoAddNodeInfo(t *testing.T) {
 	}
 
 	expected := &PoolInfo{
-		nodes: sets.NewString(nodeName),
+		pool: 		 nil,
+		nodes:       map[string]*NodeInfo{
+			nodeName: nodeInfo,
+		},
+		nodeTree:    newNodeTree([]*v1.Node{testNode}),
+
+		capacity: 	 &Resource{},
 		allocatable: &Resource{
 			MilliCPU: 30000,
 			Memory: 64000,
@@ -412,20 +268,20 @@ func TestPoolInfoAddNodeInfo(t *testing.T) {
 }
 
 func TestPoolInfoRemoveNodeInfo(t *testing.T) {
-	nodeName := "test-node"
-	testPoolInfo := &PoolInfo{
-		nodes: sets.NewString(nodeName),
 
-		allocatable: &Resource{},
-		used:        &Resource{},
-		shared:      &Resource{},
-	}
-	nodeInfo := &NodeInfo{
-		node: &v1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: nodeName,
+	nodeName := "test-node"
+	testNode := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nodeName,
+		},
+		Status: v1.NodeStatus{
+			Capacity: map[v1.ResourceName]resource.Quantity{
+
 			},
 		},
+	}
+	nodeInfo := &NodeInfo{
+		node: testNode,
 		allocatableResource: &Resource{
 			MilliCPU: 30000,
 			Memory: 64000,
@@ -434,15 +290,35 @@ func TestPoolInfoRemoveNodeInfo(t *testing.T) {
 			ScalarResources: map[v1.ResourceName]int64{ResourceGPU: 8},
 		},
 	}
+	testPoolInfo := &PoolInfo{
+		pool: 		 nil,
+		nodes:       map[string]*NodeInfo{nodeName: nodeInfo},
+		nodeTree:    newNodeTree([]*v1.Node{testNode}),
 
-	expected := &PoolInfo{
-		nodes: sets.NewString(),
 		allocatable: &Resource{
-			MilliCPU: -30000,
-			Memory: -64000,
-			AllowedPodNumber: -100,
-			EphemeralStorage: -1000,
-			ScalarResources: map[v1.ResourceName]int64{ResourceGPU: -8},
+			MilliCPU: 30000,
+			Memory: 64000,
+			AllowedPodNumber: 100,
+			EphemeralStorage: 1000,
+			ScalarResources: map[v1.ResourceName]int64{ResourceGPU: 8},
+		},
+		used: &Resource{},
+		shared: &Resource{},
+	}
+
+	nodeTree := newNodeTree([]*v1.Node{testNode})
+	nodeTree.removeNode(testNode)
+	expected := &PoolInfo{
+		pool: 		 nil,
+		nodes:       map[string]*NodeInfo{},
+		nodeTree:    nodeTree,
+
+		allocatable: &Resource{
+			MilliCPU: 0,
+			Memory: 0,
+			AllowedPodNumber: 0,
+			EphemeralStorage: 0,
+			ScalarResources: map[v1.ResourceName]int64{ResourceGPU: 0},
 		},
 		used: &Resource{},
 		shared: &Resource{},

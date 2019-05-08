@@ -183,7 +183,7 @@ func (pq *PoolQueue) AssignedPodAdded(pod *v1.Pod) {
 	poolName := info.GetPodAnnotationsPoolName(pod)
 	q, _, err := pq.getPriorityQueue(poolName)
 	if err != nil {
-		klog.Error("Failed getting queue %v when AssignedPodAdded", poolName)
+		klog.Errorf("Failed getting queue %v when AssignedPodAdded", poolName)
 		return
 	}
 	q.AssignedPodAdded(pod)
@@ -195,7 +195,7 @@ func (pq *PoolQueue) AssignedPodUpdated(pod *v1.Pod) {
 	poolName := info.GetPodAnnotationsPoolName(pod)
 	q, _, err := pq.getPriorityQueue(poolName)
 	if err != nil {
-		klog.Error("Failed getting queue %v when AssignedPodUpdated", poolName)
+		klog.Errorf("Failed getting queue %v when AssignedPodUpdated", poolName)
 		return
 	}
 	q.AssignedPodUpdated(pod)

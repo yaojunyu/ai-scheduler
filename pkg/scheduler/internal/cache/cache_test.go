@@ -923,6 +923,7 @@ func buildNodeInfo(node *v1.Node, pods []*v1.Pod) *schedulerinfo.NodeInfo {
 // and remove.
 func TestNodeOperators(t *testing.T) {
 	// Test datas
+	poolName := ""
 	nodeName := "test-node"
 	cpu1 := resource.MustParse("1000m")
 	mem100m := resource.MustParse("100m")
@@ -1066,7 +1067,7 @@ func TestNodeOperators(t *testing.T) {
 		if !found {
 			t.Errorf("Failed to find node %v in schedulerinternalcache.", node.Name)
 		}
-		if cache.nodeTree.NumNodes() != 1 || cache.nodeTree.Next() != node.Name {
+		if cache.NodeTree(poolName).NumNodes() != 1 || cache.NodeTree(poolName).Next() != node.Name {
 			t.Errorf("cache.nodeTree is not updated correctly after adding node: %v", node.Name)
 		}
 
@@ -1109,7 +1110,7 @@ func TestNodeOperators(t *testing.T) {
 			t.Errorf("Failed to update node in schedulerinfo:\n got: %+v \nexpected: %+v", got, expected)
 		}
 		// Check nodeTree after update
-		if cache.nodeTree.NumNodes() != 1 || cache.nodeTree.Next() != node.Name {
+		if cache.NodeTree(poolName).NumNodes() != 1 || cache.NodeTree(poolName).Next() != node.Name {
 			t.Errorf("unexpected cache.nodeTree after updating node: %v", node.Name)
 		}
 
@@ -1120,7 +1121,7 @@ func TestNodeOperators(t *testing.T) {
 		}
 		// Check nodeTree after remove. The node should be removed from the nodeTree even if there are
 		// still pods on it.
-		if cache.nodeTree.NumNodes() != 0 || cache.nodeTree.Next() != "" {
+		if cache.NodeTree(poolName).NumNodes() != 0 || cache.NodeTree(poolName).Next() != "" {
 			t.Errorf("unexpected cache.nodeTree after removing node: %v", node.Name)
 		}
 	}

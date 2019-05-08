@@ -49,51 +49,6 @@ func NewPoolInfo() *PoolInfo {
 	return pi
 }
 
-// AddNode add node to tool, and compute all resources value
-//func (p *PoolInfo) AddNode(node *v1.Node) error {
-//	if p == nil || node == nil {
-//		return nil
-//	}
-//	p.allocatable.Add(node.Status.Allocatable)
-//	// TODO compute used and shared resources
-//	p.nodes.Insert(node.Name)
-//	return nil
-//}
-
-// RemoveNode remove node from pool
-//func (p *PoolInfo) RemoveNode(node *v1.Node) error {
-//	if p == nil || node == nil {
-//		return nil
-//	}
-//	if !p.nodes.Has(node.Name) {
-//		return fmt.Errorf("cant remove node %v not in pool %v", node.Name, p.Name())
-//	}
-//	p.allocatable.Sub(NewResource(node.Status.Allocatable))
-//	// TODO compute used and shared resources
-//	p.nodes.Delete(node.Name)
-//	return nil
-//}
-
-//func (p *PoolInfo) UpdateNode(oldNode *v1.Node, newNode *v1.Node) error {
-//	if p == nil || oldNode == nil || newNode == nil || oldNode == newNode {
-//		return nil
-//	}
-//	if oldNode.UID != newNode.UID {
-//		return fmt.Errorf("update node failed don't has same id")
-//	}
-//
-//	if err := p.RemoveNode(oldNode); err != nil {
-//		return err
-//	}
-//	p.nodes.Delete(oldNode.Name)
-//
-//	if err := p.AddNode(newNode); err != nil {
-//		return err
-//	}
-//	p.nodes.Insert(newNode.Name)
-//	return nil
-//}
-
 // AddPod compute used and shared
 func (p *PoolInfo) AddPod(pod *v1.Pod) error {
 	res := GetResourceRequestForPool(pod)
@@ -167,6 +122,11 @@ func (p *PoolInfo) RemoveNodeInfo(ni *NodeInfo) error {
 		p.RemovePod(pod)
 	}
 	return nil
+}
+
+func (p *PoolInfo) UpdateNodeInfo(oldNi *NodeInfo, newNi *NodeInfo) {
+
+	p.nodeTree.UpdateNode(oldNi.node, newNi.node)
 }
 
 // SetPool sets the overall pool information

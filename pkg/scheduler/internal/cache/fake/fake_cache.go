@@ -17,6 +17,7 @@ limitations under the License.
 package fake
 
 import (
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
@@ -94,4 +95,22 @@ func (c *Cache) Snapshot() *schedulerinternalcache.Snapshot {
 }
 
 // NodeTree is a fake method for testing.
-func (c *Cache) NodeTree() *info.NodeTree { return nil }
+func (c *Cache) NodeTree(poolName string) *info.NodeTree { return nil }
+
+func (c *Cache) AddPool(pool *v1alpha1.Pool) error { return nil }
+
+func (c *Cache) UpdatePool(oldPool, newPool *v1alpha1.Pool) error { return nil }
+
+func (c *Cache) RemovePool(pool *v1alpha1.Pool) error { return nil }
+
+func (c *Cache) Pools() map[string]*info.PoolInfo { return nil }
+
+func (c *Cache) NumPools() int { return 0 }
+
+func (c *Cache) NumNodes() int { return 0 }
+
+func (c *Cache) GetPool(poolName string) (*info.PoolInfo, error) { return nil, nil }
+
+func (c *Cache) DeserveAllPools() error { return nil }
+
+func (c *Cache) TotalAllocatableResource() *info.Resource { return nil }

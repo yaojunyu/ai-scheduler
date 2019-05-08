@@ -98,7 +98,7 @@ type SchedulingQueue interface {
 // enabled a priority queue is returned. If it is disabled, a FIFO is returned.
 func NewSchedulingQueue(activeQComp util.LessFunc, stop <-chan struct{}) SchedulingQueue {
 	if util.PodPriorityEnabled() {
-		return NewPriorityQueue(activeQComp, stop)
+		return NewPriorityQueueWithLessFunc(activeQComp, stop)
 	}
 	return NewFIFO()
 }
@@ -291,17 +291,23 @@ func activeQComp(podInfo1, podInfo2 interface{}) bool {
 }
 
 // NewPriorityQueue creates a PriorityQueue object.
-func NewPriorityQueue(activeQComp util.LessFunc, stop <-chan struct{}) *PriorityQueue {
-	return NewPriorityQueueWithClock(activeQComp, stop, util.RealClock{})
+func NewPriorityQueue(stop <-chan struct{}) *PriorityQueue {
+	return NewPriorityQueueWithClock(stop, util.RealClock{})
 }
-
+// NewPriorityQueueWithLessFunc creates a PriorityQueue object.
+func NewPriorityQueueWithLessFunc(lessFunc util.LessFunc, stop <-chan struct{}) *PriorityQueue {
+	return NewPriorityQueueWithLessFuncAndClock(lessFunc, stop, util.RealClock{})
+}
+func NewPriorityQueueWithClock(stop <-chan struct{}, clock util.Clock) *PriorityQueue {
+	return NewPriorityQueueWithLessFuncAndClock(activeQComp, stop, clock)
+}
 // NewPriorityQueueWithClock creates a PriorityQueue which uses the passed clock for time.
-func NewPriorityQueueWithClock(activeQComp util.LessFunc, stop <-chan struct{}, clock util.Clock) *PriorityQueue {
+func NewPriorityQueueWithLessFuncAndClock(lessFunc util.LessFunc, stop <-chan struct{}, clock util.Clock) *PriorityQueue {
 	pq := &PriorityQueue{
 		clock:            clock,
 		stop:             stop,
 		podBackoff:       util.CreatePodBackoffWithClock(1*time.Second, 10*time.Second, clock),
-		activeQ:          util.NewHeap(podInfoKeyFunc, activeQComp),
+		activeQ:          util.NewHeap(podInfoKeyFunc, lessFunc),
 		unschedulableQ:   newUnschedulablePodsMap(clock),
 		nominatedPods:    newNominatedPodMap(),
 		moveRequestCycle: -1,

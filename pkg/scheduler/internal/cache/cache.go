@@ -691,8 +691,7 @@ func (cache *schedulerCache) AddNode(node *v1.Node) error {
 	cache.addNodeImageStates(node, n.info)
 	n.info.SetNode(node)
 
-	poolName := cache.matchPoolForNode(node)
-	return cache.pools[poolName].AddNodeInfo(n.info)
+	return cache.matchPoolForNode(node).AddNodeInfo(n.info)
 }
 
 func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
@@ -714,25 +713,37 @@ func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
 		return err
 	}
 
-	oldPoolName := cache.matchPoolForNode(oldNode)
-	newPoolName := cache.matchPoolForNode(newNode)
-	if err := cache.pools[oldPoolName].RemoveNodeInfo(cache.nodes[oldNode.Name].info); err != nil {
-		return err
+	cache.updatePoolNode(oldNode, newNode)
+	return nil
+}
+
+func (cache *schedulerCache) updatePoolNode(oldNode, newNode *v1.Node) error {
+	if oldNode != nil {
+		if err := cache.matchPoolForNode(oldNode).RemoveNodeInfo(cache.nodes[oldNode.Name].info); err != nil {
+			return err
+		}
 	}
-	if err := cache.pools[newPoolName].AddNodeInfo(n.info); err != nil {
-		return err
+	if newNode != nil {
+		if err := cache.matchPoolForNode(newNode).AddNodeInfo(cache.nodes[newNode.Name].info); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (cache *schedulerCache) matchPoolForNode(node *v1.Node) string {
+func (cache *schedulerCache) matchPoolForNode(node *v1.Node) *schedulerinfo.PoolInfo {
+	if node == nil {
+		return cache.pools[schedulerinfo.DefaultPoolName]
+	}
 	for _, p := range cache.pools {
 		// FIXME we assume only one pool will match the node
 		if p.MatchNode(node) {
-			return p.Name()
+			if poolInfo, ok := cache.pools[p.Name()]; ok {
+				return poolInfo
+			}
 		}
 	}
-	return schedulerinfo.DefaultPoolName
+	return cache.pools[schedulerinfo.DefaultPoolName]
 }
 
 // belongToWhichPool
@@ -756,6 +767,9 @@ func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
 	if !ok {
 		return fmt.Errorf("node %v is not found", node.Name)
 	}
+	if err := cache.matchPoolForNode(node).RemoveNodeInfo(n.info); err != nil {
+		return err
+	}
 	if err := n.info.RemoveNode(node); err != nil {
 		return err
 	}
@@ -771,11 +785,6 @@ func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
 
 	//cache.nodeTree.RemoveNode(node)
 	cache.removeNodeImageStates(node)
-
-	poolName := cache.matchPoolForNode(node)
-	if err := cache.pools[poolName].RemoveNodeInfo(n.info); err != nil {
-		return err
-	}
 	return nil
 }
 
