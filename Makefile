@@ -1,14 +1,16 @@
 BIN_DIR=_output/bin
-RELEASE_VER=v0.1.0-alpha0
-REPO_PATH=gitlabe.aibee.cn/platform/ai-scheduler
+MAJOR_VER=0
+Minor_VER=1
+RELEASE_VER=v0.1.0-alpha1
+REPO_PATH=gitlab.aibee.cn/platform/ai-scheduler
 GitSHA=`git rev-parse HEAD`
 Date=`date "+%Y-%m-%d %H:%M:%S"`
 REL_OSARCH="linux/amd64"
 IMAGE_PREFIX=registry.aibee.cn/platform/kubernetes
 LD_FLAGS=" \
-    -X '${REPO_PATH}/pkg/version.GitSHA=${GitSHA}' \
-    -X '${REPO_PATH}/pkg/version.Built=${Date}'   \
-    -X '${REPO_PATH}/pkg/version.Version=${RELEASE_VER}'"
+    -X '${REPO_PATH}/pkg/version.gitCommit=${GitSHA}' \
+    -X '${REPO_PATH}/pkg/version.buildDate=${Date}'   \
+    -X '${REPO_PATH}/pkg/version.gitVersion=${RELEASE_VER}'"
 
 .EXPORT_ALL_VARIABLES:
 
