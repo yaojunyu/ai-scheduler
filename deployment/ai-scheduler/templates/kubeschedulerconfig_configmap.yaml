@@ -17,4 +17,4 @@ data:
     schedulerName: {{ .Chart.Name }}
     healthzBindAddress: 0.0.0.0:{{ .Values.healthzPort }}
     metricsBindAddress: 0.0.0.0:{{ .Values.healthzPort }}
-    disablePreemption: true
+    disablePreemption: {{ .Values.disablePreemption }}

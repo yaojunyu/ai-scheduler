@@ -14,8 +14,11 @@ resources:
   requests:
     cpu: 2000m
     memory: 2048Mi
+
 securePort: 20888
 healthzPort: 20999
+
+disablePreemption: true
 
 leaderElect: true
 leaseDuration: "15s"
