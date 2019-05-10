@@ -186,7 +186,6 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 }
 
 func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
-	klog.V(4).Infof("Update Node In Cache")
 	oldNode, ok := oldObj.(*v1.Node)
 	if !ok {
 		klog.Errorf("cannot convert oldObj to *v1.Node: %v", oldObj)

@@ -160,7 +160,7 @@ func (es mockScheduler) Prioritizers() []priorities.PriorityConfig {
 	return nil
 }
 
-func (es mockScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error) {
+func (es mockScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error) {
 	return nil, nil, nil, nil
 }
 

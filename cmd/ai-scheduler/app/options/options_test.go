@@ -178,7 +178,7 @@ users:
 				SecureServing: (&apiserveroptions.SecureServingOptions{
 					ServerCert: apiserveroptions.GeneratableKeyCert{
 						CertDirectory: "/a/b/c",
-						PairName:      "kube-scheduler",
+						PairName:      "ai-scheduler",
 					},
 					HTTP2MaxStreamsPerConnection: 47,
 				}).WithLoopback(),
@@ -216,7 +216,7 @@ users:
 						ResourceLock:  "endpoints",
 					},
 					LockObjectNamespace: "kube-system",
-					LockObjectName:      "kube-scheduler",
+					LockObjectName:      "ai-scheduler",
 				},
 				ClientConnection: componentbaseconfig.ClientConnectionConfiguration{
 					Kubeconfig:  configKubeconfig,
@@ -258,7 +258,7 @@ users:
 				SecureServing: (&apiserveroptions.SecureServingOptions{
 					ServerCert: apiserveroptions.GeneratableKeyCert{
 						CertDirectory: "/a/b/c",
-						PairName:      "kube-scheduler",
+						PairName:      "ai-scheduler",
 					},
 					HTTP2MaxStreamsPerConnection: 47,
 				}).WithLoopback(),
@@ -296,7 +296,7 @@ users:
 						ResourceLock:  "endpoints",
 					},
 					LockObjectNamespace: "kube-system",
-					LockObjectName:      "kube-scheduler",
+					LockObjectName:      "ai-scheduler",
 				},
 				ClientConnection: componentbaseconfig.ClientConnectionConfiguration{
 					Kubeconfig:  flagKubeconfig,
@@ -314,7 +314,7 @@ users:
 				SecureServing: (&apiserveroptions.SecureServingOptions{
 					ServerCert: apiserveroptions.GeneratableKeyCert{
 						CertDirectory: "/a/b/c",
-						PairName:      "kube-scheduler",
+						PairName:      "ai-scheduler",
 					},
 					HTTP2MaxStreamsPerConnection: 47,
 				}).WithLoopback(),

@@ -102,7 +102,7 @@ type Cache interface {
 	// NumPools return the number of pools
 	NumPools() int
 
-	// NumNodes return the nuber of nodes
+	// NumNodes return the number of nodes
 	NumNodes() int
 
 	// GetPool return pool by name
@@ -120,7 +120,7 @@ type Cache interface {
 	// UpdateNodeInfoSnapshot updates the passed infoSnapshot to the current contents of Cache.
 	// The node info contains aggregated information of pods scheduled (including assumed to be)
 	// on this node.
-	UpdateNodeInfoSnapshot(nodeSnapshot *NodeInfoSnapshot) error
+	UpdateNodeInfoSnapshot(poolName string/*, nodeSnapshot *schedulerinfo.NodeInfoSnapshot*/) error
 
 	// List lists all cached pods (including assumed ones).
 	List(labels.Selector) ([]*v1.Pod, error)
@@ -129,7 +129,9 @@ type Cache interface {
 	FilteredList(filter algorithm.PodFilter, selector labels.Selector) ([]*v1.Pod, error)
 
 	// Snapshot takes a snapshot on current cache
-	Snapshot() *Snapshot
+	Snapshot() *schedulerinfo.Snapshot
+
+	NodeInfoSnapshot(poolName string) *schedulerinfo.NodeInfoSnapshot
 
 	// NodeTree returns a node tree structure
 	NodeTree(poolName string) *schedulerinfo.NodeTree
@@ -141,16 +143,16 @@ type Cache interface {
 	TotalAllocatableResource() *schedulerinfo.Resource
 }
 
-// Snapshot is a snapshot of cache state
-type Snapshot struct {
-	AssumedPods map[string]bool
-	Nodes       map[string]*schedulerinfo.NodeInfo
-}
-
-// NodeInfoSnapshot is a snapshot of cache NodeInfo. The scheduler takes a
-// snapshot at the beginning of each scheduling cycle and uses it for its
-// operations in that cycle.
-type NodeInfoSnapshot struct {
-	NodeInfoMap map[string]*schedulerinfo.NodeInfo
-	Generation  int64
-}
+//// Snapshot is a snapshot of cache state
+//type Snapshot struct {
+//	AssumedPods map[string]bool
+//	Nodes       map[string]*schedulerinfo.NodeInfo
+//}
+//
+//// NodeInfoSnapshot is a snapshot of cache NodeInfo. The scheduler takes a
+//// snapshot at the beginning of each scheduling cycle and uses it for its
+//// operations in that cycle.
+//type NodeInfoSnapshot struct {
+//	NodeInfoMap map[string]*schedulerinfo.NodeInfo
+//	Generation  int64
+//}

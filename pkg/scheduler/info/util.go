@@ -78,45 +78,6 @@ func createImageExistenceMap(nodes []*v1.Node) map[string]sets.String {
 	return imageExistenceMap
 }
 
-func getTaskStatus(pod *v1.Pod) TaskStatus {
-	switch pod.Status.Phase {
-	case v1.PodRunning:
-		if pod.DeletionTimestamp != nil {
-			return Releasing
-		}
-
-		return Running
-	case v1.PodPending:
-		if pod.DeletionTimestamp != nil {
-			return Releasing
-		}
-
-		if len(pod.Spec.NodeName) == 0 {
-			return Pending
-		}
-		return Bound
-	case v1.PodUnknown:
-		return Unknown
-	case v1.PodSucceeded:
-		return Succeeded
-	case v1.PodFailed:
-		return Failed
-	}
-
-	return Unknown
-}
-
-// AllocatedStatus checks whether the tasks has AllocatedStatus
-func AllocatedStatus(pod *v1.Pod) bool {
-	var status = getTaskStatus(pod)
-	switch status {
-	case Bound, Binding, Running, Allocated:
-		return true
-	default:
-		return false
-	}
-}
-
 // GetResourceRequestForPool
 func GetResourceRequestForPool(pod *v1.Pod) *Resource {
 	result := &Resource{}

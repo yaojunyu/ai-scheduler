@@ -18,10 +18,10 @@ spec:
           args: ["-Mbignum=bpi", "-wle", "print bpi(20000)"]
           resources:
             limits:
-              cpu: 4
+              cpu: 1000m
               memory: 100M
             requests:
-              cpu: 4
+              cpu: 1000m
               memory: 100M
       restartPolicy: Never
   backoffLimit: 1

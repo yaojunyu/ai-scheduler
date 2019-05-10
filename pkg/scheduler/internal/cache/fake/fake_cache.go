@@ -20,7 +20,6 @@ import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
-	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -77,7 +76,7 @@ func (c *Cache) UpdateNode(oldNode, newNode *v1.Node) error { return nil }
 func (c *Cache) RemoveNode(node *v1.Node) error { return nil }
 
 // UpdateNodeInfoSnapshot is a fake method for testing.
-func (c *Cache) UpdateNodeInfoSnapshot(nodeSnapshot *schedulerinternalcache.NodeInfoSnapshot) error {
+func (c *Cache) UpdateNodeInfoSnapshot(poolName string) error {
 	return nil
 }
 
@@ -90,8 +89,8 @@ func (c *Cache) FilteredList(filter algorithm.PodFilter, selector labels.Selecto
 }
 
 // Snapshot is a fake method for testing
-func (c *Cache) Snapshot() *schedulerinternalcache.Snapshot {
-	return &schedulerinternalcache.Snapshot{}
+func (c *Cache) Snapshot() *info.Snapshot {
+	return &info.Snapshot{}
 }
 
 // NodeTree is a fake method for testing.
@@ -114,3 +113,5 @@ func (c *Cache) GetPool(poolName string) (*info.PoolInfo, error) { return nil, n
 func (c *Cache) DeserveAllPools() error { return nil }
 
 func (c *Cache) TotalAllocatableResource() *info.Resource { return nil }
+
+func (c *Cache) NodeInfoSnapshot(poolName string) *info.NodeInfoSnapshot { return nil }

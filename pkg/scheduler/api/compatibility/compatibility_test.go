@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	asinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions"
 	_ "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithmprovider/defaults"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	latestschedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/latest"
@@ -1095,10 +1096,12 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		defer server.Close()
 		client := clientset.NewForConfigOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
 		informerFactory := informers.NewSharedInformerFactory(client, 0)
+		asinformerFactory := asinformers.NewSharedInformerFactory(nil, 0)
 
 		if _, err := factory.NewConfigFactory(&factory.ConfigFactoryArgs{
 			SchedulerName:                  "some-scheduler-name",
 			Client:                         client,
+			PoolInformer:                   asinformerFactory.Resource().V1alpha1().Pools(),
 			NodeInformer:                   informerFactory.Core().V1().Nodes(),
 			PodInformer:                    informerFactory.Core().V1().Pods(),
 			PvInformer:                     informerFactory.Core().V1().PersistentVolumes(),

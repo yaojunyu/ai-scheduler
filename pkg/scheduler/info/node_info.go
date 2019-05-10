@@ -593,6 +593,9 @@ func (n *NodeInfo) RemovePod(pod *v1.Pod) error {
 			return nil
 		}
 	}
+	if n.node == nil {
+		return fmt.Errorf("node is nil in nodeinfo when remove pod %v", pod.Name)
+	}
 	return fmt.Errorf("no corresponding pod %s in pods of node %s", pod.Name, n.node.Name)
 }
 

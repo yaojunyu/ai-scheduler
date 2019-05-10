@@ -35,19 +35,19 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 )
 
-func deepEqualWithoutGeneration(t *testing.T, testcase int, actual *nodeInfoListItem, expected *schedulerinfo.NodeInfo) {
+func deepEqualWithoutGeneration(t *testing.T, testcase int, actual *schedulerinfo.NodeInfoListItem, expected *schedulerinfo.NodeInfo) {
 	if (actual == nil) != (expected == nil) {
 		t.Error("One of the actual or expeted is nil and the other is not!")
 	}
 	// Ignore generation field.
 	if actual != nil {
-		actual.info.SetGeneration(0)
+		actual.Info().SetGeneration(0)
 	}
 	if expected != nil {
 		expected.SetGeneration(0)
 	}
-	if actual != nil && !reflect.DeepEqual(actual.info, expected) {
-		t.Errorf("#%d: node info get=%s, want=%s", testcase, actual.info, expected)
+	if actual != nil && !reflect.DeepEqual(actual.Info(), expected) {
+		t.Errorf("#%d: node info get=%s, want=%s", testcase, actual.Info(), expected)
 	}
 }
 
@@ -214,7 +214,7 @@ func TestAssumePodScheduled(t *testing.T) {
 				t.Fatalf("AssumePod failed: %v", err)
 			}
 		}
-		n := cache.nodes[nodeName]
+		n := cache.nodes()[nodeName]
 		deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo)
 
 		for _, pod := range tt.pods {
@@ -222,7 +222,7 @@ func TestAssumePodScheduled(t *testing.T) {
 				t.Fatalf("ForgetPod failed: %v", err)
 			}
 		}
-		if cache.nodes[nodeName] != nil {
+		if cache.nodes()[nodeName] != nil {
 			t.Errorf("NodeInfo should be cleaned for %s", nodeName)
 		}
 	}
@@ -294,7 +294,7 @@ func TestExpirePod(t *testing.T) {
 		}
 		// pods that have assumedTime + ttl < cleanupTime will get expired and removed
 		cache.cleanupAssumedPods(tt.cleanupTime)
-		n := cache.nodes[nodeName]
+		n := cache.nodes()[nodeName]
 		deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo)
 	}
 }
@@ -349,7 +349,7 @@ func TestAddPodWillConfirm(t *testing.T) {
 		}
 		cache.cleanupAssumedPods(now.Add(2 * ttl))
 		// check after expiration. confirmed pods shouldn't be expired.
-		n := cache.nodes[nodeName]
+		n := cache.nodes()[nodeName]
 		deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo)
 	}
 }
@@ -385,13 +385,13 @@ func TestSnapshot(t *testing.T) {
 		}
 
 		snapshot := cache.Snapshot()
-		if len(snapshot.Nodes) != len(cache.nodes) {
-			t.Errorf("Unequal number of nodes in the cache and its snapshot. expeted: %v, got: %v", len(cache.nodes), len(snapshot.Nodes))
+		if len(snapshot.Nodes) != len(cache.nodes()) {
+			t.Errorf("Unequal number of nodes in the cache and its snapshot. expeted: %v, got: %v", len(cache.nodes()), len(snapshot.Nodes))
 		}
 		for name, ni := range snapshot.Nodes {
-			nItem := cache.nodes[name]
-			if !reflect.DeepEqual(ni, nItem.info) {
-				t.Errorf("expect \n%+v; got \n%+v", nItem.info, ni)
+			nItem := cache.nodes()[name]
+			if !reflect.DeepEqual(ni, nItem.Info()) {
+				t.Errorf("expect \n%+v; got \n%+v", nItem.Info(), ni)
 			}
 		}
 		if !reflect.DeepEqual(snapshot.AssumedPods, cache.assumedPods) {
@@ -456,7 +456,7 @@ func TestAddPodWillReplaceAssumed(t *testing.T) {
 		}
 		for nodeName, expected := range tt.wNodeInfo {
 			t.Log(nodeName)
-			n := cache.nodes[nodeName]
+			n := cache.nodes()[nodeName]
 			deepEqualWithoutGeneration(t, i, n, expected)
 		}
 	}
@@ -498,7 +498,7 @@ func TestAddPodAfterExpiration(t *testing.T) {
 		}
 		cache.cleanupAssumedPods(now.Add(2 * ttl))
 		// It should be expired and removed.
-		n := cache.nodes[nodeName]
+		n := cache.nodes()[nodeName]
 		if n != nil {
 			t.Errorf("#%d: expecting nil node info, but get=%v", i, n)
 		}
@@ -506,7 +506,7 @@ func TestAddPodAfterExpiration(t *testing.T) {
 			t.Fatalf("AddPod failed: %v", err)
 		}
 		// check after expiration. confirmed pods shouldn't be expired.
-		n = cache.nodes[nodeName]
+		n = cache.nodes()[nodeName]
 		deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo)
 	}
 }
@@ -572,7 +572,7 @@ func TestUpdatePod(t *testing.T) {
 				t.Fatalf("UpdatePod failed: %v", err)
 			}
 			// check after expiration. confirmed pods shouldn't be expired.
-			n := cache.nodes[nodeName]
+			n := cache.nodes()[nodeName]
 			deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo[i-1])
 		}
 	}
@@ -708,7 +708,7 @@ func TestExpireAddUpdatePod(t *testing.T) {
 				t.Fatalf("UpdatePod failed: %v", err)
 			}
 			// check after expiration. confirmed pods shouldn't be expired.
-			n := cache.nodes[nodeName]
+			n := cache.nodes()[nodeName]
 			deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo[i-1])
 		}
 	}
@@ -765,16 +765,16 @@ func TestEphemeralStorageResource(t *testing.T) {
 		if err := cache.AddPod(tt.pod); err != nil {
 			t.Fatalf("AddPod failed: %v", err)
 		}
-		n := cache.nodes[nodeName]
+		n := cache.nodes()[nodeName]
 		deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo)
 
 		if err := cache.RemovePod(tt.pod); err != nil {
 			t.Fatalf("RemovePod failed: %v", err)
 		}
 
-		n = cache.nodes[nodeName]
+		n = cache.nodes()[nodeName]
 		if n != nil {
-			t.Errorf("#%d: expecting pod deleted and nil node info, get=%s", i, n.info)
+			t.Errorf("#%d: expecting pod deleted and nil node info, get=%s", i, n.Info())
 		}
 	}
 }
@@ -810,16 +810,16 @@ func TestRemovePod(t *testing.T) {
 		if err := cache.AddPod(tt.pod); err != nil {
 			t.Fatalf("AddPod failed: %v", err)
 		}
-		n := cache.nodes[nodeName]
+		n := cache.nodes()[nodeName]
 		deepEqualWithoutGeneration(t, i, n, tt.wNodeInfo)
 
 		if err := cache.RemovePod(tt.pod); err != nil {
 			t.Fatalf("RemovePod failed: %v", err)
 		}
 
-		n = cache.nodes[nodeName]
+		n = cache.nodes()[nodeName]
 		if n != nil {
-			t.Errorf("#%d: expecting pod deleted and nil node info, get=%s", i, n.info)
+			t.Errorf("#%d: expecting pod deleted and nil node info, get=%s", i, n.Info())
 		}
 	}
 }
@@ -872,8 +872,8 @@ func TestForgetPod(t *testing.T) {
 			}
 		}
 		cache.cleanupAssumedPods(now.Add(2 * ttl))
-		if n := cache.nodes[nodeName]; n != nil {
-			t.Errorf("#%d: expecting pod deleted and nil node info, get=%s", i, n.info)
+		if n := cache.nodes()[nodeName]; n != nil {
+			t.Errorf("#%d: expecting pod deleted and nil node info, get=%s", i, n.Info())
 		}
 	}
 }
@@ -1063,7 +1063,7 @@ func TestNodeOperators(t *testing.T) {
 		}
 
 		// Case 1: the node was added into cache successfully.
-		got, found := cache.nodes[node.Name]
+		got, found := cache.nodes()[node.Name]
 		if !found {
 			t.Errorf("Failed to find node %v in schedulerinternalcache.", node.Name)
 		}
@@ -1072,17 +1072,18 @@ func TestNodeOperators(t *testing.T) {
 		}
 
 		// Generations are globally unique. We check in our unit tests that they are incremented correctly.
-		expected.SetGeneration(got.info.GetGeneration())
-		if !reflect.DeepEqual(got.info, expected) {
+		expected.SetGeneration(got.Info().GetGeneration())
+		if !reflect.DeepEqual(got.Info(), expected) {
 			t.Errorf("Failed to add node into schedulercache:\n got: %+v \nexpected: %+v", got, expected)
 		}
 
 		// Case 2: dump cached nodes successfully.
-		cachedNodes := NewNodeInfoSnapshot()
-		cache.UpdateNodeInfoSnapshot(&cachedNodes)
+		//cachedNodes := schedulerinfo.NewNodeInfoSnapshot()
+		cache.UpdateNodeInfoSnapshot(""/*&cachedNodes*/)
+		cachedNodes := cache.NodeInfoSnapshot("")
 		newNode, found := cachedNodes.NodeInfoMap[node.Name]
 		if !found || len(cachedNodes.NodeInfoMap) != 1 {
-			t.Errorf("failed to dump cached nodes:\n got: %v \nexpected: %v", cachedNodes, cache.nodes)
+			t.Errorf("failed to dump cached nodes:\n got: %v \nexpected: %v", cachedNodes, cache.nodes())
 		}
 		expected.SetGeneration(newNode.GetGeneration())
 		if !reflect.DeepEqual(newNode, expected) {
@@ -1097,16 +1098,16 @@ func TestNodeOperators(t *testing.T) {
 		expected.SetAllocatableResource(newAllocatableResource)
 
 		cache.UpdateNode(nil, node)
-		got, found = cache.nodes[node.Name]
+		got, found = cache.nodes()[node.Name]
 		if !found {
 			t.Errorf("Failed to find node %v in schedulerinfo after UpdateNode.", node.Name)
 		}
-		if got.info.GetGeneration() <= expected.GetGeneration() {
-			t.Errorf("Generation is not incremented. got: %v, expected: %v", got.info.GetGeneration(), expected.GetGeneration())
+		if got.Info().GetGeneration() <= expected.GetGeneration() {
+			t.Errorf("Generation is not incremented. got: %v, expected: %v", got.Info().GetGeneration(), expected.GetGeneration())
 		}
-		expected.SetGeneration(got.info.GetGeneration())
+		expected.SetGeneration(got.Info().GetGeneration())
 
-		if !reflect.DeepEqual(got.info, expected) {
+		if !reflect.DeepEqual(got.Info(), expected) {
 			t.Errorf("Failed to update node in schedulerinfo:\n got: %+v \nexpected: %+v", got, expected)
 		}
 		// Check nodeTree after update
@@ -1116,7 +1117,7 @@ func TestNodeOperators(t *testing.T) {
 
 		// Case 4: the node can not be removed if pods is not empty.
 		cache.RemoveNode(node)
-		if _, found := cache.nodes[node.Name]; !found {
+		if _, found := cache.nodes()[node.Name]; !found {
 			t.Errorf("The node %v should not be removed if pods is not empty.", node.Name)
 		}
 		// Check nodeTree after remove. The node should be removed from the nodeTree even if there are
@@ -1181,7 +1182,7 @@ func TestSchedulerCache_UpdateNodeInfoSnapshot(t *testing.T) {
 	}
 
 	var cache *schedulerCache
-	var snapshot NodeInfoSnapshot
+	var snapshot *schedulerinfo.NodeInfoSnapshot
 	type operation = func()
 
 	addNode := func(i int) operation {
@@ -1216,8 +1217,9 @@ func TestSchedulerCache_UpdateNodeInfoSnapshot(t *testing.T) {
 	}
 	updateSnapshot := func() operation {
 		return func() {
-			cache.UpdateNodeInfoSnapshot(&snapshot)
-			if err := compareCacheWithNodeInfoSnapshot(cache, &snapshot); err != nil {
+			cache.UpdateNodeInfoSnapshot("")
+			snapshot = cache.NodeInfoSnapshot("")
+			if err := compareCacheWithNodeInfoSnapshot(cache, snapshot); err != nil {
 				t.Error(err)
 			}
 		}
@@ -1334,44 +1336,44 @@ func TestSchedulerCache_UpdateNodeInfoSnapshot(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			cache = newSchedulerCache(time.Second, time.Second, nil)
-			snapshot = NewNodeInfoSnapshot()
+			//snapshot = schedulerinfo.NewNodeInfoSnapshot()
 
 			for _, op := range test.operations {
 				op()
 			}
 
-			if len(test.expected) != len(cache.nodes) {
-				t.Errorf("unexpected number of nodes. Expected: %v, got: %v", len(test.expected), len(cache.nodes))
+			if len(test.expected) != len(cache.nodes()) {
+				t.Errorf("unexpected number of nodes. Expected: %v, got: %v", len(test.expected), len(cache.nodes()))
 			}
 			var i int
 			// Check that cache is in the expected state.
-			for node := cache.headNode; node != nil; node = node.next {
-				if node.info.Node().Name != test.expected[i].Name {
-					t.Errorf("unexpected node. Expected: %v, got: %v, index: %v", test.expected[i].Name, node.info.Node().Name, i)
+			for node := cache.defaultPool().HeadNode(); node != nil; node = node.Next() {
+				if node.Info().Node().Name != test.expected[i].Name {
+					t.Errorf("unexpected node. Expected: %v, got: %v, index: %v", test.expected[i].Name, node.Info().Node().Name, i)
 				}
 				i++
 			}
 			// Make sure we visited all the cached nodes in the above for loop.
-			if i != len(cache.nodes) {
-				t.Errorf("Not all the nodes were visited by following the NodeInfo linked list. Expected to see %v nodes, saw %v.", len(cache.nodes), i)
+			if i != len(cache.nodes()) {
+				t.Errorf("Not all the nodes were visited by following the NodeInfo linked list. Expected to see %v nodes, saw %v.", len(cache.nodes()), i)
 			}
 
 			// Always update the snapshot at the end of operations and compare it.
-			cache.UpdateNodeInfoSnapshot(&snapshot)
-			if err := compareCacheWithNodeInfoSnapshot(cache, &snapshot); err != nil {
+			cache.UpdateNodeInfoSnapshot("")
+			if err := compareCacheWithNodeInfoSnapshot(cache, cache.NodeInfoSnapshot("")); err != nil {
 				t.Error(err)
 			}
 		})
 	}
 }
 
-func compareCacheWithNodeInfoSnapshot(cache *schedulerCache, snapshot *NodeInfoSnapshot) error {
-	if len(snapshot.NodeInfoMap) != len(cache.nodes) {
-		return fmt.Errorf("unexpected number of nodes in the snapshot. Expected: %v, got: %v", len(cache.nodes), len(snapshot.NodeInfoMap))
+func compareCacheWithNodeInfoSnapshot(cache *schedulerCache, snapshot *schedulerinfo.NodeInfoSnapshot) error {
+	if len(snapshot.NodeInfoMap) != len(cache.nodes()) {
+		return fmt.Errorf("unexpected number of nodes in the snapshot. Expected: %v, got: %v", len(cache.nodes()), len(snapshot.NodeInfoMap))
 	}
-	for name, ni := range cache.nodes {
-		if !reflect.DeepEqual(snapshot.NodeInfoMap[name], ni.info) {
-			return fmt.Errorf("unexpected node info. Expected: %v, got: %v", ni.info, snapshot.NodeInfoMap[name])
+	for name, ni := range cache.nodes() {
+		if !reflect.DeepEqual(snapshot.NodeInfoMap[name], ni.Info()) {
+			return fmt.Errorf("unexpected node info. Expected: %v, got: %v", ni.Info(), snapshot.NodeInfoMap[name])
 		}
 	}
 	return nil
@@ -1391,8 +1393,8 @@ func BenchmarkUpdate1kNodes30kPods(b *testing.B) {
 	cache := setupCacheOf1kNodes30kPods(b)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		cachedNodes := NewNodeInfoSnapshot()
-		cache.UpdateNodeInfoSnapshot(&cachedNodes)
+		//cachedNodes := schedulerinfo.NewNodeInfoSnapshot()
+		cache.UpdateNodeInfoSnapshot("")
 	}
 }
 

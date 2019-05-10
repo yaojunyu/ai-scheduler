@@ -515,7 +515,7 @@ func makeScheduler(predicates map[string]algorithmpredicates.FitPredicate, nodes
 		emptyPluginSet,
 		nil, nil, nil, nil, false, false,
 		schedulerapi.DefaultPercentageOfNodesToScore)
-	cache.UpdateNodeInfoSnapshot(&s.(*genericScheduler).nodeInfoSnapshot)
+	cache.UpdateNodeInfoSnapshot("")
 	return s.(*genericScheduler)
 
 }
@@ -1447,9 +1447,9 @@ func TestPreempt(t *testing.T) {
 				false,
 				false,
 				schedulerapi.DefaultPercentageOfNodesToScore)
-			scheduler.(*genericScheduler).snapshot()
+			scheduler.(*genericScheduler).snapshot("")
 			// Call Preempt and check the expected results.
-			node, victims, _, err := scheduler.Preempt(test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{Pod: test.pod, FailedPredicates: failedPredMap}))
+			node, victims, _, err := scheduler.Preempt("", test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{Pod: test.pod, FailedPredicates: failedPredMap}))
 			if err != nil {
 				t.Errorf("unexpected error in preemption: %v", err)
 			}
@@ -1479,7 +1479,7 @@ func TestPreempt(t *testing.T) {
 				test.pod.Status.NominatedNodeName = node.Name
 			}
 			// Call preempt again and make sure it doesn't preempt any more pods.
-			node, victims, _, err = scheduler.Preempt(test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{Pod: test.pod, FailedPredicates: failedPredMap}))
+			node, victims, _, err = scheduler.Preempt("", test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{Pod: test.pod, FailedPredicates: failedPredMap}))
 			if err != nil {
 				t.Errorf("unexpected error in preemption: %v", err)
 			}

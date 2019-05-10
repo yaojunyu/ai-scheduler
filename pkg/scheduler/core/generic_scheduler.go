@@ -110,7 +110,7 @@ type ScheduleAlgorithm interface {
 	// the pod by preempting lower priority pods if possible.
 	// It returns the node where preemption happened, a list of preempted pods, a
 	// list of pods whose nominated node name should be removed, and error if any.
-	Preempt(*v1.Pod, algorithm.NodeLister, error) (selectedNode *v1.Node, preemptedPods []*v1.Pod, cleanupNominatedPods []*v1.Pod, err error)
+	Preempt(string, *v1.Pod, algorithm.NodeLister, error) (selectedNode *v1.Node, preemptedPods []*v1.Pod, cleanupNominatedPods []*v1.Pod, err error)
 	// Predicates() returns a pointer to a map of predicate functions. This is
 	// exposed for testing.
 	Predicates() map[string]predicates.FitPredicate
@@ -141,7 +141,7 @@ type genericScheduler struct {
 	extenders                []algorithm.SchedulerExtender
 	lastNodeIndex            uint64
 	alwaysCheckAllPredicates bool
-	nodeInfoSnapshot         schedulerinternalcache.NodeInfoSnapshot
+	//nodeInfoSnapshot         schedulerinfo.NodeInfoSnapshot
 	volumeBinder             *volumebinder.VolumeBinder
 	pvcLister                corelisters.PersistentVolumeClaimLister
 	pdbLister                algorithm.PDBLister
@@ -151,9 +151,9 @@ type genericScheduler struct {
 
 // snapshot snapshots scheduler cache and node infos for all fit and priority
 // functions.
-func (g *genericScheduler) snapshot() error {
+func (g *genericScheduler) snapshot(poolName string) error {
 	// Used for all fit and priority funcs.
-	return g.cache.UpdateNodeInfoSnapshot(&g.nodeInfoSnapshot)
+	return g.cache.UpdateNodeInfoSnapshot(poolName)
 }
 
 // Schedule tries to schedule the given pod to one of the nodes in the node list.
@@ -175,7 +175,7 @@ func (g *genericScheduler) Schedule(poolName string, pod *v1.Pod, nodeLister alg
 		return result, ErrNoNodesAvailable
 	}
 
-	if err := g.snapshot(); err != nil {
+	if err := g.snapshot(poolName); err != nil {
 		return result, err
 	}
 
@@ -211,8 +211,8 @@ func (g *genericScheduler) Schedule(poolName string, pod *v1.Pod, nodeLister alg
 		}, nil
 	}
 
-	metaPrioritiesInterface := g.priorityMetaProducer(pod, g.nodeInfoSnapshot.NodeInfoMap)
-	priorityList, err := PrioritizeNodes(pod, g.nodeInfoSnapshot.NodeInfoMap, metaPrioritiesInterface, g.prioritizers, filteredNodes, g.extenders)
+	metaPrioritiesInterface := g.priorityMetaProducer(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap)
+	priorityList, err := PrioritizeNodes(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap, metaPrioritiesInterface, g.prioritizers, filteredNodes, g.extenders)
 	if err != nil {
 		return result, err
 	}
@@ -285,14 +285,14 @@ func (g *genericScheduler) selectHost(priorityList schedulerapi.HostPriorityList
 // other pods with the same priority. The nominated pod prevents other pods from
 // using the nominated resources and the nominated pod could take a long time
 // before it is retried after many other pending pods.
-func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error) {
+func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error) {
 	// Scheduler may return various types of errors. Consider preemption only if
 	// the error is of type FitError.
 	fitError, ok := scheduleErr.(*FitError)
 	if !ok || fitError == nil {
 		return nil, nil, nil, nil
 	}
-	if !podEligibleToPreemptOthers(pod, g.nodeInfoSnapshot.NodeInfoMap) {
+	if !podEligibleToPreemptOthers(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap) {
 		klog.V(5).Infof("Pod %v/%v is not eligible for more preemption.", pod.Namespace, pod.Name)
 		return nil, nil, nil, nil
 	}
@@ -313,7 +313,7 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	nodeToVictims, err := selectNodesForPreemption(pod, g.nodeInfoSnapshot.NodeInfoMap, potentialNodes, g.predicates,
+	nodeToVictims, err := selectNodesForPreemption(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap, potentialNodes, g.predicates,
 		g.predicateMetaProducer, g.schedulingQueue, pdbs)
 	if err != nil {
 		return nil, nil, nil, err
@@ -322,7 +322,7 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 	// We will only check nodeToVictims with extenders that support preemption.
 	// Extenders which do not support preemption may later prevent preemptor from being scheduled on the nominated
 	// node. In that case, scheduler will find a different host for the preemptor in subsequent scheduling cycles.
-	nodeToVictims, err = g.processPreemptionWithExtenders(pod, nodeToVictims)
+	nodeToVictims, err = g.processPreemptionWithExtenders(poolName, pod, nodeToVictims)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -337,7 +337,7 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 	// nomination updates these pods and moves them to the active queue. It
 	// lets scheduler find another place for them.
 	nominatedPods := g.getLowerPriorityNominatedPods(pod, candidateNode.Name)
-	if nodeInfo, ok := g.nodeInfoSnapshot.NodeInfoMap[candidateNode.Name]; ok {
+	if nodeInfo, ok := g.cache.NodeInfoSnapshot(poolName).NodeInfoMap[candidateNode.Name]; ok {
 		return nodeInfo.Node(), nodeToVictims[candidateNode].Pods, nominatedPods, nil
 	}
 
@@ -348,6 +348,7 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 
 // processPreemptionWithExtenders processes preemption with extenders
 func (g *genericScheduler) processPreemptionWithExtenders(
+	poolName string,
 	pod *v1.Pod,
 	nodeToVictims map[*v1.Node]*schedulerapi.Victims,
 ) (map[*v1.Node]*schedulerapi.Victims, error) {
@@ -357,7 +358,7 @@ func (g *genericScheduler) processPreemptionWithExtenders(
 				newNodeToVictims, err := extender.ProcessPreemption(
 					pod,
 					nodeToVictims,
-					g.nodeInfoSnapshot.NodeInfoMap,
+					g.cache.NodeInfoSnapshot(poolName).NodeInfoMap,
 				)
 				if err != nil {
 					if extender.IsIgnorable() {
@@ -454,14 +455,14 @@ func (g *genericScheduler) findNodesThatFit(poolName string, pod *v1.Pod, nodes 
 		ctx, cancel := context.WithCancel(context.Background())
 
 		// We can use the same metadata producer for all nodes.
-		meta := g.predicateMetaProducer(pod, g.nodeInfoSnapshot.NodeInfoMap)
+		meta := g.predicateMetaProducer(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap)
 
 		checkNode := func(i int) {
 			nodeName := g.cache.NodeTree(poolName).Next()
 			fits, failedPredicates, err := podFitsOnNode(
 				pod,
 				meta,
-				g.nodeInfoSnapshot.NodeInfoMap[nodeName],
+				g.cache.NodeInfoSnapshot(poolName).NodeInfoMap[nodeName],
 				g.predicates,
 				g.schedulingQueue,
 				g.alwaysCheckAllPredicates,
@@ -478,7 +479,7 @@ func (g *genericScheduler) findNodesThatFit(poolName string, pod *v1.Pod, nodes 
 					cancel()
 					atomic.AddInt32(&filteredLen, -1)
 				} else {
-					filtered[length-1] = g.nodeInfoSnapshot.NodeInfoMap[nodeName].Node()
+					filtered[length-1] = g.cache.NodeInfoSnapshot(poolName).NodeInfoMap[nodeName].Node()
 				}
 			} else {
 				predicateResultLock.Lock()
@@ -502,7 +503,7 @@ func (g *genericScheduler) findNodesThatFit(poolName string, pod *v1.Pod, nodes 
 			if !extender.IsInterested(pod) {
 				continue
 			}
-			filteredList, failedMap, err := extender.Filter(pod, filtered, g.nodeInfoSnapshot.NodeInfoMap)
+			filteredList, failedMap, err := extender.Filter(pod, filtered, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap)
 			if err != nil {
 				if extender.IsIgnorable() {
 					klog.Warningf("Skipping extender %v as it returned error %v and has ignorable flag set",
@@ -1196,7 +1197,7 @@ func NewGenericScheduler(
 		priorityMetaProducer:     priorityMetaProducer,
 		pluginSet:                pluginSet,
 		extenders:                extenders,
-		nodeInfoSnapshot:         schedulerinternalcache.NewNodeInfoSnapshot(),
+		//nodeInfoSnapshot:         schedulerinternalcache.NewNodeInfoSnapshot(),
 		volumeBinder:             volumeBinder,
 		pvcLister:                pvcLister,
 		pdbLister:                pdbLister,
