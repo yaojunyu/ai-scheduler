@@ -19,6 +19,7 @@ package cache
 import (
 	"fmt"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
+	"reflect"
 	"sync"
 	"time"
 
@@ -196,8 +197,9 @@ func (cache *schedulerCache) Snapshot() *schedulerinfo.Snapshot {
 	cache.mu.RLock()
 	defer cache.mu.RUnlock()
 
-	nodes := make(map[string]*schedulerinfo.NodeInfo, len(cache.nodes()))
-	for k, v := range cache.nodes() {
+	nds := cache.nodes()
+	nodes := make(map[string]*schedulerinfo.NodeInfo, len(nds))
+	for k, v := range nds {
 		nodes[k] = v.Info().Clone()
 	}
 
@@ -281,11 +283,12 @@ func (cache *schedulerCache) FilteredList(podFilter algorithm.PodFilter, selecto
 	// can avoid expensive array growth without wasting too much memory by
 	// pre-allocating capacity.
 	maxSize := 0
-	for _, n := range cache.nodes() {
+	nodes := cache.nodes()
+	for _, n := range nodes {
 		maxSize += len(n.Info().Pods())
 	}
 	pods := make([]*v1.Pod, 0, maxSize)
-	for _, n := range cache.nodes() {
+	for _, n := range nodes {
 		for _, pod := range n.Info().Pods() {
 			if podFilter(pod) && selector.Matches(labels.Set(pod.Labels)) {
 				pods = append(pods, pod)
@@ -535,8 +538,6 @@ func (cache *schedulerCache) AddPool(pool *v1alpha1.Pool) error {
 		cache.pools[pool.Name] = pi
 	}
 	pi.SetPool(pool)
-
-
 	// compute default pool
 	return cache.subFromDefaultPool(pi)
 }
@@ -545,15 +546,43 @@ func (cache *schedulerCache) UpdatePool(oldPool, newPool *v1alpha1.Pool) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	if oldPool == nil || newPool == nil || oldPool == newPool {
-		return nil
+	pi, ok := cache.pools[newPool.Name]
+	if !ok {
+		pi = schedulerinfo.NewPoolInfo()
+		cache.pools[newPool.Name] = pi
+		pi.SetPool(newPool)
+		return cache.subFromDefaultPool(pi)
 	}
+	pi.SetPool(newPool)
+	// check if need change
+	if poolResourcePropertiesChanged(oldPool, newPool) {
+		// gc resources to default pool
+		if err := cache.addToDefaultPool(pi); err != nil {
+			return err
+		}
+		return cache.subFromDefaultPool(pi)
+	}
+	return nil
+}
 
-	err := cache.RemovePool(oldPool)
-	if err != nil {
-		return err
+func poolResourcePropertiesChanged(oldPool, newPool *v1alpha1.Pool) bool {
+	if (oldPool == nil && newPool == nil) || newPool == nil {
+		return false
 	}
-	return cache.AddPool(newPool)
+	if poolNodeSelectorChanged(oldPool, newPool) {
+		return true
+	}
+	if poolSupportResourcesChanged(oldPool, newPool) {
+		return true
+	}
+	return false
+}
+func poolNodeSelectorChanged(oldPool, newPool *v1alpha1.Pool) bool {
+	return !reflect.DeepEqual(oldPool.Spec.NodeSelector, newPool.Spec.NodeSelector)
+}
+
+func poolSupportResourcesChanged(oldPool, newPool *v1alpha1.Pool) bool {
+	return !reflect.DeepEqual(oldPool.Spec.SupportResources, newPool.Spec.SupportResources)
 }
 
 func (cache *schedulerCache) RemovePool(pool *v1alpha1.Pool) error {
@@ -599,8 +628,13 @@ func (cache *schedulerCache) addToDefaultPool(p *schedulerinfo.PoolInfo) error {
 	}
 	df := cache.defaultPool()
 	for _, item := range p.Nodes() {
-		df.AddNodeInfo(item)
-		p.RemoveNodeInfo(item)
+		// if node already exists will return err, avoided node conflicts
+		if err := df.AddNodeInfo(item); err != nil {
+			return err
+		}
+		if err := p.RemoveNodeInfo(item); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -743,13 +777,14 @@ func (cache *schedulerCache) matchPoolForNode(node *v1.Node) *schedulerinfo.Pool
 	if node == nil {
 		return cache.defaultPool()
 	}
-	for _, p := range cache.pools {
-		// FIXME we assume only one pool will match the node
+	for n, p := range cache.pools {
+		if n == schedulerinfo.DefaultPoolName {
+			continue
+		}
 		if p.MatchNode(node) {
 			return p
 		}
 	}
-	klog.Warningf("Warning not any pool matched for node %v", node.Name)
 	return cache.defaultPool()
 }
 

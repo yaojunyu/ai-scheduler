@@ -71,8 +71,8 @@ func (n *NodeInfoListItem) Next() *NodeInfoListItem {
 func (n *NodeInfoListItem) Prev() *NodeInfoListItem {
 	return n.prev
 }
-func (n *PoolInfo) HeadNode() *NodeInfoListItem {
-	return n.headNode
+func (p *PoolInfo) HeadNode() *NodeInfoListItem {
+	return p.headNode
 }
 
 func NewPoolInfo() *PoolInfo {
@@ -281,9 +281,9 @@ func (p *PoolInfo) SetPool(pool *v1alpha1.Pool) error {
 }
 
 // RemovePool removes the overall information about the pool
-func (p *PoolInfo) ClearPool() error {
+func (p *PoolInfo) ClearPool() {
 	if p == nil {
-		return nil
+		return
 	}
 	p.pool = nil
 	p.nodes = nil
@@ -291,7 +291,7 @@ func (p *PoolInfo) ClearPool() error {
 	p.used = nil
 	p.shared = nil
 
-	return nil
+	return
 }
 
 func (p *PoolInfo) GetPoolWeight() map[v1.ResourceName]int32 {
@@ -324,14 +324,10 @@ func (p *PoolInfo) GetQuotaValue(name v1.ResourceName) int64 {
 }
 
 func (p *PoolInfo) NumNodes() int {
-	if p == nil || p.nodeTree == nil {
+	if p == nil {
 		return 0
 	}
-	num :=len(p.nodes)
-	if num != p.nodeTree.numNodes {
-		klog.Errorf("Error: nodeTree size %d not equals nodes size %d in pool %v", num, p.nodeTree.numNodes, p.Name())
-	}
-	return num
+	return len(p.nodes)
 }
 
 func (p *PoolInfo) Name() string {
