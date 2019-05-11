@@ -21,7 +21,9 @@ type SchedulingPoolQueue interface {
 	NumQueues() int
 	Queues() map[string]SchedulingQueue
 	NumUnschedulablePods() int
+	NumUnschedulablePodsIn(poolName string) int
 	MoveAllToActiveQueue()
+	MoveAllToActiveQueueIn(poolName string)
 	AssignedPodAdded(pod *v1.Pod)
 	AssignedPodUpdated(pod *v1.Pod)
 	PendingPods() []*v1.Pod
@@ -135,7 +137,7 @@ func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 	if err != nil {
 		return err
 	}
-	klog.V(4).Infof("Delete pod %v/%v form pool queue '%v'", pod.Namespace, pod.Name, n)
+	klog.V(4).Infof("Delete pod %v/%v from pool queue '%v'", pod.Namespace, pod.Name, n)
 	return q.Delete(pod)
 }
 
@@ -176,10 +178,27 @@ func (pq *PoolQueue) NumUnschedulablePods() int {
 	return num
 }
 
+func (pq *PoolQueue) NumUnschedulablePodsIn(poolName string) int {
+	pq.lock.Lock()
+	defer pq.lock.Unlock()
+	if q, ok := pq.queues[poolName]; ok {
+		return q.NumUnschedulablePods()
+	}
+	return 0
+}
+
 func (pq *PoolQueue) MoveAllToActiveQueue() {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	for _, q := range pq.queues {
+		q.MoveAllToActiveQueue()
+	}
+}
+
+func (pq *PoolQueue) MoveAllToActiveQueueIn(poolName string) {
+	pq.lock.Lock()
+	defer pq.lock.Unlock()
+	if q, ok := pq.queues[poolName]; ok {
 		q.MoveAllToActiveQueue()
 	}
 }
@@ -274,6 +293,7 @@ func (pq *PoolQueue) poolQueuePodPriorityComp(poolName string) util.LessFunc {
 		pn2 := pq.matchPoolQueueNameForPod(pInfo2.pod)
 
 		if pn1 == poolName && pn2 == poolName {
+			// self pool task
 			return (prio1 > prio2) || (prio1 == prio2 &&
 				pInfo1.timestamp.Before(pInfo2.timestamp))
 		} else if pn1 == poolName && pn2 != poolName {
@@ -281,6 +301,7 @@ func (pq *PoolQueue) poolQueuePodPriorityComp(poolName string) util.LessFunc {
 		} else if pn1 != poolName && pn2 == poolName {
 			return false
 		} else {
+			// both are jobs that need borrowing
 			// TODO consider pool priority
 			return (prio1 > prio2) || (prio1 == prio2 &&
 				pInfo1.timestamp.Before(pInfo2.timestamp))

@@ -297,7 +297,7 @@ func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
 
 // newMetricsHandler builds a metrics server from the config.
 func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) http.Handler {
-	pathRecorderMux := mux.NewPathRecorderMux("kube-scheduler")
+	pathRecorderMux := mux.NewPathRecorderMux("ai-scheduler")
 	installMetricHandler(pathRecorderMux)
 	if config.EnableProfiling {
 		routes.Profiling{}.Install(pathRecorderMux)
@@ -312,7 +312,7 @@ func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) h
 // embed the metrics handler if the healthz and metrics address configurations
 // are the same.
 func newHealthzHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration, separateMetrics bool, checks ...healthz.HealthzChecker) http.Handler {
-	pathRecorderMux := mux.NewPathRecorderMux("kube-scheduler")
+	pathRecorderMux := mux.NewPathRecorderMux("ai-scheduler")
 	healthz.InstallHandler(pathRecorderMux, checks...)
 	if !separateMetrics {
 		installMetricHandler(pathRecorderMux)

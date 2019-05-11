@@ -746,11 +746,10 @@ func (cache *schedulerCache) matchPoolForNode(node *v1.Node) *schedulerinfo.Pool
 	for _, p := range cache.pools {
 		// FIXME we assume only one pool will match the node
 		if p.MatchNode(node) {
-			if pi, ok := cache.pools[p.Name()]; ok {
-				return pi
-			}
+			return p
 		}
 	}
+	klog.Warningf("Warning not any pool matched for node %v", node.Name)
 	return cache.defaultPool()
 }
 
@@ -764,7 +763,7 @@ func (cache *schedulerCache) matchPoolForPod(pod *v1.Pod) *schedulerinfo.PoolInf
 			}
 		}
 	}
-	klog.Errorf("not any pool matched for pod %v", pod.Name)
+	klog.Warningf("Warning not any pool matched for pod %v", pod.Name)
 	return cache.defaultPool()
 }
 
@@ -1176,3 +1175,13 @@ func (cache *schedulerCache) TotalAllocatableResource() *schedulerinfo.Resource 
 	return cache.calculateTotalResource()
 }
 
+func (cache *schedulerCache) GetPoolContainsNode(nodeName string) *schedulerinfo.PoolInfo {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	for _, p := range cache.pools {
+		if _, ok := p.ContainsNode(nodeName); ok {
+			return p
+		}
+	}
+	return nil
+}

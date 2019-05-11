@@ -931,34 +931,7 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 		pod, err := q.Pop()
 		for err == nil {
 			klog.V(4).Infof("About to try and schedule pod %v/%v in pool queue %v", pod.Namespace, pod.Name, poolName)
-
-			// if the pool has not enough resources then borrows other pool
-			// FIXME reconstruct if possible
-			if !checkResourceIfEnough(poolName, pod, schedulerCache) {
-				selfPoolName := queues.GetPoolQueueNameIfNotPresent(pod)
-				if poolName == selfPoolName {
-					// borrow other pool
-					err := borrowFromOtherPool(poolName, pod, queues, schedulerCache)
-					if err == nil {
-						pod, err = q.Pop()
-					} else {
-						klog.Warningf("Borrow failed: %v", err)
-						return pod, err
-					}
-				} else {
-					// reclaim from pool
-					err := reclaimFromPool(poolName, selfPoolName, pod, queues)
-					if err == nil {
-						pod, err = q.Pop()
-					} else {
-						return pod, err
-					}
-				}
-			} else {
-				klog.V(4).Infof("Has enough resources for pod %v/%v in pool queue %v",
-					pod.Namespace, pod.Name, poolName)
-				return pod, err
-			}
+			return pod, err
 
 		}
 		klog.Errorf("Error while retrieving next pod from scheduling queue: %v", err)
@@ -968,61 +941,4 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 
 func podInfoKeyFunc(obj interface{}) (string, error) {
 	return cache.MetaNamespaceKeyFunc(obj.(*podInfo).pod)
-}
-
-// FIXME reconstruct if possible
-func checkResourceIfEnough(poolName string, pod *v1.Pod, schedulerCache schedulerinternalcache.Cache) bool {
-	//res := info.GetPodResourceRequestWithoutNonZeroContainer(pod)
-	res := predicates.GetResourceRequest(pod)
-
-	//q, err := queues.GetQueue(poolName)
-	poolInfo, err := schedulerCache.GetPool(poolName)
-	if err != nil {
-		klog.Errorf("Get pool failed: %v", err)
-		return false
-	}
-
-	return res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Allocatable())
-}
-
-func borrowFromOtherPool(poolName string, pod *v1.Pod, queues SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) error {
-	// TODO consider priority of pool and pool idle size
-	for _, poolInfo := range schedulerCache.Pools() {
-		if poolName != poolInfo.Name() {
-			res := predicates.GetResourceRequest(pod)
-			if res.Plus(poolInfo.Used()).LessOrEqual(poolInfo.Allocatable()) {
-				q, err := queues.GetQueue(poolInfo.Name())
-				if err != nil {
-					return err
-				}
-				if err := q.AddIfNotPresent(pod); err != nil {
-					return err
-				} else {
-					klog.V(4).Infof("Borrow resources form pool '%v' by pod %v/%v in pool queue %v",
-						poolInfo.Name(), pod.Namespace, pod.Name, poolName)
-					return nil
-				}
-			}
-		}
-	}
-	return fmt.Errorf("not any pools can borrow resources for %v/%v", pod.Namespace, pod.Name)
-}
-
-func reclaimFromPool(poolName, selfPoolName string, pod *v1.Pod, queues SchedulingPoolQueue) error {
-	if poolName == selfPoolName {
-		return nil
-	}
-	q, err := queues.GetQueue(poolName)
-	if err != nil {
-		return err
-	}
-	err = q.Delete(pod)
-	if err != nil {
-		return err
-	}
-	q, err = queues.GetQueue(selfPoolName)
-	if err != nil {
-		return err
-	}
-	return q.AddIfNotPresent(pod)
 }

@@ -75,7 +75,7 @@ func StartTestServer(t Logger, customFlags []string) (result TestServer, err err
 		}
 	}()
 
-	result.TmpDir, err = ioutil.TempDir("", "kube-scheduler")
+	result.TmpDir, err = ioutil.TempDir("", "ai-scheduler")
 	if err != nil {
 		return result, fmt.Errorf("failed to create temp dir: %v", err)
 	}
@@ -100,7 +100,7 @@ func StartTestServer(t Logger, customFlags []string) (result TestServer, err err
 		}
 		s.SecureServing.ServerCert.CertDirectory = result.TmpDir
 
-		t.Logf("kube-scheduler will listen securely on port %d...", s.SecureServing.BindPort)
+		t.Logf("ai-scheduler will listen securely on port %d...", s.SecureServing.BindPort)
 	}
 
 	if s.CombinedInsecureServing.BindPort != 0 {
@@ -111,7 +111,7 @@ func StartTestServer(t Logger, customFlags []string) (result TestServer, err err
 		s.CombinedInsecureServing.BindPort = port
 		s.CombinedInsecureServing.Healthz.Listener = listener
 		s.CombinedInsecureServing.Metrics.Listener = listener
-		t.Logf("kube-scheduler will listen insecurely on port %d...", s.CombinedInsecureServing.BindPort)
+		t.Logf("ai-scheduler will listen insecurely on port %d...", s.CombinedInsecureServing.BindPort)
 	}
 	config, err := s.Config()
 	if err != nil {

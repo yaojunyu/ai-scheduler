@@ -20,6 +20,7 @@ package factory
 
 import (
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"time"
 
 	resourceinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
@@ -679,7 +680,7 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 		backoff.Gc()
 		podQueue, err := poolQueue.GetQueue(poolName)
 		if err != nil {
-			klog.Errorf("Error while getting poolQueue %s when call MakeDefaultErrorFunc : %v", poolName, err)
+			klog.Errorf("Error while getting poolQueue %s: %v", poolName, err)
 			return
 		}
 		podSchedulingCycle := podQueue.SchedulingCycle()
@@ -708,7 +709,17 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 				pod, err := client.CoreV1().Pods(podID.Namespace).Get(podID.Name, metav1.GetOptions{})
 				if err == nil {
 					if len(pod.Spec.NodeName) == 0 {
-						podQueue.AddUnschedulableIfNotPresent(pod, podSchedulingCycle)
+						bestPoolName := findBestPodQueueToSchedule(poolName, pod, poolQueue, schedulerCache)
+						if bestPoolName == poolName {
+							// if is the same pool add pod to unscheduleable queue
+							podQueue.AddUnschedulableIfNotPresent(pod, podSchedulingCycle)
+							klog.V(4).Infof("Add pod %v/%v to unschedulable queue of pool queue %v", pod.Namespace, pod.Name, bestPoolName)
+						} else {
+							// if is other pool add pod to active queue
+							q, _ := poolQueue.GetQueue(bestPoolName)
+							q.AddIfNotPresent(pod)
+							klog.V(4).Infof("Add pod %v/%v to active queue of pool queue %v", pod.Namespace, pod.Name, bestPoolName)
+						}
 					}
 					break
 				}
@@ -724,6 +735,58 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 			}
 		}()
 	}
+}
+
+func findBestPodQueueToSchedule(poolName string, pod *v1.Pod, poolQueue internalqueue.SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache) string {
+	// Borrowing protocol
+	// 1. check if pod can borrow
+	// 	  1.1 if pod can borrow
+	// 	      1.1.1 sort all enabled sharing pools order by idle size, but self pool always first
+	//        1.1.2 start for-loop to fit pod on nodes in pool, return fit pool
+	//    2.1 if pod can't borrow, or not any pools fit
+	//        2.1.1 return self pool
+	selfPoolName := poolQueue.GetPoolQueueNameIfNotPresent(pod)
+	selfPoolInfo, _ := schedulerCache.GetPool(selfPoolName)
+	if !selfPoolInfo.DisableBorrowing() {
+		higherIdleFunc := func(pool1, pool2 interface{}) bool {
+			p1 := pool1.(*info.PoolInfo)
+			p2 := pool2.(*info.PoolInfo)
+			// self pool has highest priority
+			if selfPoolName == p1.Name() && selfPoolName != p2.Name() {
+				return true
+			}
+			if selfPoolName != p1.Name() && selfPoolName == p2.Name() {
+				return false
+			}
+			return !p1.Idle().LessOrEqual(p2.Idle())
+		}
+		sharingPools := util.SortableList{CompFunc: higherIdleFunc}
+		for _, p := range schedulerCache.Pools() {
+			if p.DisableSharing() {
+				continue
+			}
+			sharingPools.Items = append(sharingPools.Items, p)
+		}
+		sharingPools.Sort()
+		for _, p := range sharingPools.Items {
+			pi := p.(*info.PoolInfo)
+			klog.V(4).Infof("Attempt borrowing %v for pod %v/%v@%v in queue %v", pi.Name(), pod.Namespace, pod.Name, selfPoolName, poolName)
+			// predicate for nodes of pool
+			for _, n := range pi.Nodes() {
+				fit, _, err := predicates.PodFitsResources(pod, nil, n.Info())
+				if err != nil {
+					klog.Errorf("Error pod fit resources failed: %v", err)
+					continue
+				}
+				if fit {
+					return pi.Name()
+				}
+			}
+		}
+	}
+	klog.V(4).Infof("pool %v disabled borrowing: %v, or Not any pools fit pod %v/%v", selfPoolName, selfPoolInfo.DisableBorrowing(), pod.Namespace, pod.Name,)
+	return selfPoolName
+
 }
 
 // nodeEnumerator allows a cache.Poller to enumerate items in a v1.NodeList

@@ -8,9 +8,11 @@ spec:
     metadata:
       name: test-job
       annotations:
-        resource.aibee.cn/pool: prod-cpu-pool
+        resource.aibee.cn/pool: prod-gpu-pool
     spec:
       schedulerName: ai-scheduler
+#      nodeSelector:
+#        node-role.kubernetes.io/master: ""
       containers:
         - name: pi
           image: perl

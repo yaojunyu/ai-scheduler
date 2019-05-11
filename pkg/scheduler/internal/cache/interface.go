@@ -117,6 +117,8 @@ type Cache interface {
 	// RemoveNode removes overall information about node.
 	RemoveNode(node *v1.Node) error
 
+	GetPoolContainsNode(nodeName string) *schedulerinfo.PoolInfo
+
 	// UpdateNodeInfoSnapshot updates the passed infoSnapshot to the current contents of Cache.
 	// The node info contains aggregated information of pods scheduled (including assumed to be)
 	// on this node.

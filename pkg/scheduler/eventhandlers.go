@@ -175,7 +175,9 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 	if err := sched.config.SchedulerCache.AddNode(node); err != nil {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
 	}
-	sched.config.PoolQueue.MoveAllToActiveQueue()
+
+	p := sched.config.SchedulerCache.GetPoolContainsNode(node.Name)
+	sched.config.PoolQueue.MoveAllToActiveQueueIn(p.Name())
 }
 
 func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
@@ -199,8 +201,9 @@ func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
 	// to save processing cycles. We still trigger a move to active queue to cover the case
 	// that a pod being processed by the scheduler is determined unschedulable. We want this
 	// pod to be reevaluated when a change in the cluster happens.
-	if sched.config.PoolQueue.NumUnschedulablePods() == 0 || nodeSchedulingPropertiesChanged(newNode, oldNode) {
-		sched.config.PoolQueue.MoveAllToActiveQueue()
+	p := sched.config.SchedulerCache.GetPoolContainsNode(newNode.Name)
+	if sched.config.PoolQueue.NumUnschedulablePodsIn(p.Name()) == 0 || nodeSchedulingPropertiesChanged(newNode, oldNode) {
+		sched.config.PoolQueue.MoveAllToActiveQueueIn(p.Name())
 	}
 
 	sched.PrintPools()
@@ -336,7 +339,8 @@ func (sched *Scheduler) deletePodFromCache(obj interface{}) {
 		klog.Errorf("scheduler cache RemovePod failed: %v", err)
 	}
 
-	sched.config.PoolQueue.MoveAllToActiveQueue()
+	p := sched.config.SchedulerCache.GetPoolContainsNode(pod.Spec.NodeName)
+	sched.config.PoolQueue.MoveAllToActiveQueueIn(p.Name())
 }
 
 // assignedPod selects pods that are assigned (scheduled and running).

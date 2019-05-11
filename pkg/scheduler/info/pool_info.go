@@ -32,8 +32,6 @@ type PoolInfo struct {
 
 	// node trees
 	nodeTree *NodeTree
-	// A map from image name to its imageState.
-	imageStates map[string]*imageState
 
 	// All nodes' capacity sum
 	capacity *Resource
@@ -357,6 +355,14 @@ func (p *PoolInfo) Allocatable() *Resource {
 	return p.allocatable
 }
 
+// Add idle filed if possible
+func (p *PoolInfo) Idle() *Resource {
+	if p == nil {
+		return nil
+	}
+	return p.allocatable.Clone().Sub(p.used)
+}
+
 func (p *PoolInfo) Used() *Resource {
 	if p == nil {
 		return nil
@@ -383,6 +389,27 @@ func (p *PoolInfo) NodeTree() *NodeTree {
 		return nil
 	}
 	return p.nodeTree
+}
+
+func (p *PoolInfo) DisableSharing() bool {
+	if p == nil || p.pool == nil {
+		return false
+	}
+	return p.pool.Spec.DisableSharing
+}
+
+func (p *PoolInfo) DisableBorrowing() bool {
+	if p == nil || p.pool == nil {
+		return false
+	}
+	return p.pool.Spec.DisableBorrowing
+}
+
+func (p *PoolInfo) DisablePreemption() bool {
+	if p == nil || p.pool == nil {
+		return false
+	}
+	return p.pool.Spec.DisablePreemption
 }
 
 func (p *PoolInfo) SetAllocatable(resource *Resource) {
