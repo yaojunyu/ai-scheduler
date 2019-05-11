@@ -1,4 +1,4 @@
 apiVersion: v1alpha1
 description: The Ai scheduler of Kubernetes
 name: ai-scheduler
-version: 0.1.0-alpha0
+version: 0.1.0-alpha2
