@@ -67,7 +67,7 @@ spec:
       nodeSelector:
         kubernetes.io/role: master
       priorityClassName: system-cluster-critical
-      restartPolicy: Always
+      restartPolicy: {{ .Values.restartPolicy }}
       schedulerName: default-scheduler
       securityContext: {}
       serviceAccountName: {{ .Chart.Name }}
