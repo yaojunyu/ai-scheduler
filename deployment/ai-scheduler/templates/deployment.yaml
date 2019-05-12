@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: {{ .Chart.Name }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
         command:
           - /usr/local/bin/ai-scheduler
           - --config=/etc/kubernetes/kubeschedulerconfig.yaml
