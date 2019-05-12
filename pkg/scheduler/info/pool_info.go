@@ -672,3 +672,7 @@ func (p *PoolInfo) reducePodResource(pod *v1.Pod) {
 		p.shared.Sub(res)
 	}
 }
+
+func (p *PoolInfo) String() string {
+	return p.Name()
+}
