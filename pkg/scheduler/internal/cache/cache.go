@@ -704,22 +704,37 @@ func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
 	oldPool := cache.matchPoolForNode(oldNode)
 	newPool := cache.matchPoolForNode(newNode)
 	if oldPool == newPool {
-		ni, ok := newPool.ContainsNode(newNode.Name)
-		if ok {
-			cache.removeNodeImageStates(ni.Info().Node())
+		if n, ok := newPool.ContainsNode(newNode.Name); ok {
+			cache.removeNodeImageStates(n.Info().Node())
+		}
+		if err := newPool.UpdateNode(oldNode, newNode); err != nil {
+			return err
 		}
 	} else {
-		ni, ok := oldPool.ContainsNode(oldNode.Name)
+		oldItem, ok := oldPool.ContainsNode(newNode.Name)
 		if ok {
-			cache.removeNodeImageStates(ni.Info().Node())
+			cache.removeNodeImageStates(oldItem.Info().Node())
+			if err := oldPool.RemoveNodeInfo(oldItem); err != nil {
+				return err
+			}
+		}
+		if newItem, ok := newPool.ContainsNode(newNode.Name); ok {
+			cache.removeNodeImageStates(newItem.Info().Node())
+			if err := newPool.AddNodeInfo(newItem); err != nil {
+				return err
+			}
+			if err := newItem.Info().SetNode(newNode); err != nil {
+				return err
+			}
+		} else {
+			if err := newPool.AddNodeInfo(oldItem); err != nil {
+				return err
+			}
+			if err := oldItem.Info().SetNode(newNode); err != nil {
+				return err
+			}
 		}
 	}
-
-	err := newPool.UpdateNodeFromPool(oldPool, oldNode, newNode)
-	if err != nil {
-		return err
-	}
-
 	cache.addNodeImageStates(newNode, newPool.Nodes()[newNode.Name].Info())
 	return nil
 }
@@ -758,33 +773,24 @@ func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
 	return nil
 }
 
-//
-//func (cache *schedulerCache) updatePoolNode(oldNode, newNode *v1.Node) error {
-//	if oldNode != nil {
-//		if err := cache.matchPoolForNode(oldNode).RemoveNodeInfo(cache.nodes[oldNode.Name].info); err != nil {
-//			return err
-//		}
-//	}
-//	if newNode != nil {
-//		if err := cache.matchPoolForNode(newNode).AddNodeInfo(cache.nodes[newNode.Name].info); err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
-
 func (cache *schedulerCache) matchPoolForNode(node *v1.Node) *schedulerinfo.PoolInfo {
 	if node == nil {
 		return cache.defaultPool()
 	}
+	var matches []*schedulerinfo.PoolInfo
 	for n, p := range cache.pools {
 		if n == schedulerinfo.DefaultPoolName {
 			continue
 		}
 		if p.MatchNode(node) {
-			return p
+			matches = append(matches, p)
 		}
 	}
+	klog.V(4).Infof("matched pools for node %v: %v", node.Name, matches)
+	if len(matches) == 1 {
+		return matches[0]
+	}
+	// if matched none or more than one pool return default pool
 	return cache.defaultPool()
 }
 

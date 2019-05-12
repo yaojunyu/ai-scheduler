@@ -186,25 +186,26 @@ func (p *PoolInfo) RemoveNode(node *v1.Node) error {
 	return nil
 }
 
-func (p *PoolInfo) UpdateNodeFromPool(oldP *PoolInfo, oldNode, newNode *v1.Node) error {
-	if p == oldP {
-		return p.updateNode(oldNode, newNode)
-	} else {
-		ni, ok := oldP.nodes[oldNode.Name]
-		if ok {
-			oldP.removeNodeInfoFromList(oldNode.Name)
-			oldP.nodeTree.RemoveNode(oldNode)
-			oldP.capacity.Sub(NewResource(oldNode.Status.Capacity))
-			oldP.allocatable.Sub(NewResource(oldNode.Status.Allocatable))
-			for _, pod := range ni.info.pods {
-				oldP.reducePodResource(pod)
-			}
-		}
-		return p.AddNodeInfo(ni)
-	}
-}
+//func (p *PoolInfo) UpdateNodeFromPool(oldP *PoolInfo, oldNode, newNode *v1.Node) error {
+//	if p == oldP {
+//		return p.updateNode(oldNode, newNode)
+//	} else {
+//		ni, ok := oldP.nodes[oldNode.Name]
+//		if ok {
+//			oldP.removeNodeInfoFromList(oldNode.Name)
+//			oldP.nodeTree.RemoveNode(oldNode)
+//			oldP.capacity.Sub(NewResource(oldNode.Status.Capacity))
+//			oldP.allocatable.Sub(NewResource(oldNode.Status.Allocatable))
+//			for _, pod := range ni.info.pods {
+//				oldP.reducePodResource(pod)
+//			}
+//		}
+//		oldP.RemoveNodeInfo(ni)
+//		return p.AddNodeInfo(ni)
+//	}
+//}
 
-func (p *PoolInfo) updateNode(oldNode, newNode *v1.Node) error {
+func (p *PoolInfo) UpdateNode(oldNode, newNode *v1.Node) error {
 	n, ok := p.nodes[newNode.Name]
 	if !ok {
 		n = newNodeInfoListItem(NewNodeInfo())

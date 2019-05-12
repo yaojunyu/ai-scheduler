@@ -18,6 +18,7 @@ package cache
 
 import (
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"reflect"
 	"strings"
 	"testing"
@@ -1488,4 +1489,158 @@ func setupCacheWithAssumedPods(b *testing.B, podNum int, assumedTime time.Time) 
 		}
 	}
 	return cache
+}
+
+func TestPoolOperators(t *testing.T) {
+	poolName1 := "pool1"
+	poolName2 := "pool2"
+	cpu0 := resource.MustParse("0m")
+	mem0m := resource.MustParse("0m")
+	resourceFoo0 := resource.MustParse("0")
+	cpu1 := resource.MustParse("1000m")
+	mem100m := resource.MustParse("100m")
+	cpuHalf := resource.MustParse("500m")
+	mem50m := resource.MustParse("50m")
+	resourceFooName := "example.com/foo"
+	resourceFoo := resource.MustParse("1")
+
+	empty := schedulerinfo.NewResource(v1.ResourceList{
+		v1.ResourceCPU:                   cpu0,
+		v1.ResourceMemory:                mem0m,
+		v1.ResourceName(resourceFooName): resourceFoo0,
+	})
+
+	node1 := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node1",
+			Labels: map[string]string{
+				"test-pool": "pool1",
+			},
+		},
+		Status: v1.NodeStatus{
+			Allocatable: v1.ResourceList{
+				v1.ResourceCPU:                   cpu1,
+				v1.ResourceMemory:                mem100m,
+				v1.ResourceName(resourceFooName): resourceFoo,
+			},
+		},
+	}
+	node2 := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node2",
+			Labels: map[string]string{
+				"test-pool": "pool2",
+			},
+		},
+		Status: v1.NodeStatus{
+			Allocatable: v1.ResourceList{
+				v1.ResourceCPU:                   cpuHalf,
+				v1.ResourceMemory:                mem50m,
+				v1.ResourceName(resourceFooName): resourceFoo,
+			},
+		},
+	}
+
+	tests := struct {
+		pools []*v1alpha1.Pool
+		nodes []*v1.Node
+		updates []*v1.Node
+	}{
+		pools: []*v1alpha1.Pool{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: poolName1,
+				},
+				Spec: v1alpha1.PoolSpec{
+					NodeSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"test-pool": "pool1",
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: poolName2,
+				},
+				Spec: v1alpha1.PoolSpec{
+					NodeSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"test-pool": "pool2",
+						},
+					},
+				},
+			},
+		},
+		nodes: []*v1.Node{
+			node1,
+			node2,
+		},
+		updates: []*v1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+					Labels: map[string]string{
+						"test-pool": "pool2",
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node2",
+					Labels: map[string]string{
+						"test-pool": "pool1",
+					},
+				},
+			},
+		},
+	}
+
+	cache := newSchedulerCache(time.Second, time.Second, nil)
+	// Case 1: add node resource, add pool correctly
+	for _, node := range tests.nodes {
+		cache.AddNode(node)
+	}
+	for _, pool := range tests.pools {
+		cache.AddPool(pool)
+	}
+	if len(cache.pools) != len(tests.pools)+1 {
+		t.Errorf("pools not add correctly: pools size not right")
+	}
+	for i, pool := range tests.pools {
+		pi, found := cache.pools[pool.Name]
+		if !found {
+			t.Errorf("pool %v not added to cache", pi.Name())
+		}
+		if !reflect.DeepEqual(pi.Allocatable(), schedulerinfo.NewResource(tests.nodes[i].Status.Allocatable)) {
+			t.Errorf("expected: %v,\ngot: %v", schedulerinfo.NewResource(tests.nodes[i].Status.Allocatable), pi.Allocatable())
+		}
+	}
+
+	// Case 1: remove nodes
+	for _, node := range tests.nodes {
+		cache.RemoveNode(node)
+	}
+	for _, pool := range cache.pools {
+		if !reflect.DeepEqual(pool.Allocatable(), empty) {
+			t.Errorf("expected: %v, \ngot: %v", empty, pool.Allocatable())
+		}
+	}
+	for _, node := range tests.nodes {
+		cache.AddNode(node)
+	}
+	// Case 2: update node resource, update pool correctly
+	cache.UpdateNode(tests.nodes[0], tests.updates[0])
+	if cache.pools[poolName1].NumNodes() != 0 ||
+		cache.pools[poolName2].NumNodes() != 2 {
+		t.Error("pool not right after update nodes")
+	}
+	res2 := schedulerinfo.NewResource(tests.nodes[0].Status.Allocatable)
+	res2.Add(tests.nodes[1].Status.Allocatable)
+	if !reflect.DeepEqual(cache.pools[poolName1].Allocatable(), empty) {
+		t.Error("pool resource not right after update nodes")
+	}
+	if !reflect.DeepEqual(cache.pools[poolName2].Allocatable(), res2) {
+		t.Error("pool resource not right after update nodes")
+	}
 }
