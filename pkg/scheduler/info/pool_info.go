@@ -186,25 +186,6 @@ func (p *PoolInfo) RemoveNode(node *v1.Node) error {
 	return nil
 }
 
-//func (p *PoolInfo) UpdateNodeFromPool(oldP *PoolInfo, oldNode, newNode *v1.Node) error {
-//	if p == oldP {
-//		return p.updateNode(oldNode, newNode)
-//	} else {
-//		ni, ok := oldP.nodes[oldNode.Name]
-//		if ok {
-//			oldP.removeNodeInfoFromList(oldNode.Name)
-//			oldP.nodeTree.RemoveNode(oldNode)
-//			oldP.capacity.Sub(NewResource(oldNode.Status.Capacity))
-//			oldP.allocatable.Sub(NewResource(oldNode.Status.Allocatable))
-//			for _, pod := range ni.info.pods {
-//				oldP.reducePodResource(pod)
-//			}
-//		}
-//		oldP.RemoveNodeInfo(ni)
-//		return p.AddNodeInfo(ni)
-//	}
-//}
-
 func (p *PoolInfo) UpdateNode(oldNode, newNode *v1.Node) error {
 	n, ok := p.nodes[newNode.Name]
 	if !ok {
@@ -269,11 +250,6 @@ func (p *PoolInfo) RemoveNodeInfo(item *NodeInfoListItem) error {
 	}
 	return nil
 }
-
-//func (p *PoolInfo) UpdateNodeInfo(oldNi *NodeInfo, newNi *NodeInfo) {
-//
-//	p.nodeTree.UpdateNode(oldNi.node, newNi.node)
-//}
 
 // SetPool sets the overall pool information
 func (p *PoolInfo) SetPool(pool *v1alpha1.Pool) error {
@@ -479,30 +455,6 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 
 	return true
 }
-
-// TODO consider move nodeTree to pool struct the uncomment bellow function
-//func (p *PoolInfo) MatchPoolNodes(nodes []*v1.Node) (*Resource, error) {
-//	if nodes == nil || len(nodes) == 0 {
-//		klog.Warning("Not any nodes cached, will not filter nodes for Pool")
-//		return &Resource{}, nil
-//	}
-//
-//	if p == nil ||
-//		(p.pool.Spec.NodeSelector == nil &&
-//			p.pool.Spec.SupportResources == nil) {
-//		return &Resource{}, nil
-//	}
-//
-//	totalResource := &Resource{}
-//	for _, n := range nodes {
-//		if p.matchNode(n) {
-//			p.nodeTree.AddNode(n)
-//			totalResource.Add(n.Status.Allocatable)
-//		}
-//	}
-//
-//	return totalResource, nil
-//}
 
 func (p *PoolInfo) IsDefaultPool() bool {
 	if p == nil {

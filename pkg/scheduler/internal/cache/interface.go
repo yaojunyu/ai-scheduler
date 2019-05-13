@@ -145,16 +145,3 @@ type Cache interface {
 	TotalAllocatableResource() *schedulerinfo.Resource
 }
 
-//// Snapshot is a snapshot of cache state
-//type Snapshot struct {
-//	AssumedPods map[string]bool
-//	Nodes       map[string]*schedulerinfo.NodeInfo
-//}
-//
-//// NodeInfoSnapshot is a snapshot of cache NodeInfo. The scheduler takes a
-//// snapshot at the beginning of each scheduling cycle and uses it for its
-//// operations in that cycle.
-//type NodeInfoSnapshot struct {
-//	NodeInfoMap map[string]*schedulerinfo.NodeInfo
-//	Generation  int64
-//}
