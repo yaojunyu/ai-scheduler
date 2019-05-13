@@ -1,40 +1,11 @@
 apiVersion: resource.aibee.cn/v1alpha1
 kind: Pool
 metadata:
-  name: prod-cpu-pool
+  name: cpu-pool
 spec:
   nodeSelector:
     matchLabels:
-      prod-cpu: "true"
-
-#  supportResources:
-#    - "gpu"
-
-#  weight:
-#    cpu: 2
-#    nvidia.com/gpu: 0
-
-#  quota:
-#    cpu: "4"
-#    nvidia.com/gpu: "10"
-  priority: 10
-  priorites:
-    - name: "MostRequestedPriority"
-      weight: 1
-
-  disablePreemption: false
-  disableBorrowing: false
-  disableSharing: true
----
-apiVersion: resource.aibee.cn/v1alpha1
-kind: Pool
-metadata:
-  name: staging-cpu-pool
-spec:
-  nodeSelector:
-    matchLabels:
-      staging-cpu: "true"
-  priority: 5
+      cpu: "true"
   disablePreemption: false
   disableBorrowing: false
   disableSharing: false
@@ -42,25 +13,11 @@ spec:
 apiVersion: resource.aibee.cn/v1alpha1
 kind: Pool
 metadata:
-  name: prod-gpu-pool
+  name: gpu-pool
 spec:
   nodeSelector:
     matchLabels:
-      prod-gpu: "true"
-  priority: 10
-  disablePreemption: false
-  disableBorrowing: false
-  disableSharing: false
----
-apiVersion: resource.aibee.cn/v1alpha1
-kind: Pool
-metadata:
-  name: staging-gpu-pool
-spec:
-  nodeSelector:
-    matchLabels:
-      staging-gpu: "true"
-  priority: 5
+      gpu: "true"
   disablePreemption: false
   disableBorrowing: false
   disableSharing: false

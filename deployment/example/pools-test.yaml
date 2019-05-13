@@ -24,7 +24,7 @@ spec:
 
   disablePreemption: false
   disableBorrowing: false
-  disableSharing: false
+  disableSharing: true
 ---
 apiVersion: resource.aibee.cn/v1alpha1
 kind: Pool

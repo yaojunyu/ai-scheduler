@@ -3,110 +3,28 @@ kind: Job
 metadata:
   name: test-job1
 spec:
-  parallelism: 20000
+  parallelism: 10000
   template:
     metadata:
       name: test-job1
       annotations:
-        resource.aibee.cn/pool: prod-gpu-pool
+        resource.aibee.cn/pool: cpu-pool
     spec:
       schedulerName: ai-scheduler
       containers:
         - name: pi
           image: perl
           command: ["perl"]
-          args: ["-Mbignum=bpi", "-wle", "print bpi(200)"]
+          args: ["-Mbignum=bpi", "-wle", "print bpi(20000)"]
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
-              cpu: 100m
+              cpu: 1000m
               memory: 100M
+              "nvidia.com/gpu": "1"
             requests:
-              cpu: 100m
+              cpu: 1000m
               memory: 100M
+              "nvidia.com/gpu": "1"
       restartPolicy: Never
   backoffLimit: 1
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: test-job2
-spec:
-  parallelism: 20000
-  template:
-    metadata:
-      name: test-job2
-      annotations:
-        resource.aibee.cn/pool: staging-gpu-pool
-    spec:
-      schedulerName: ai-scheduler
-      containers:
-        - name: pi
-          image: perl
-          command: ["perl"]
-          args: ["-Mbignum=bpi", "-wle", "print bpi(200)"]
-          resources:
-            limits:
-              cpu: 100m
-              memory: 100M
-            requests:
-              cpu: 100m
-              memory: 100M
-      restartPolicy: Never
-  backoffLimit: 1
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: test-job3
-spec:
-  parallelism: 20000
-  template:
-    metadata:
-      name: test-job3
-      annotations:
-        resource.aibee.cn/pool: prod-cpu-pool
-    spec:
-      schedulerName: ai-scheduler
-      containers:
-        - name: pi
-          image: perl
-          command: ["perl"]
-          args: ["-Mbignum=bpi", "-wle", "print bpi(200)"]
-          resources:
-            limits:
-              cpu: 100m
-              memory: 100M
-            requests:
-              cpu: 100m
-              memory: 100M
-      restartPolicy: Never
-  backoffLimit: 1
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: test-job4
-spec:
-  parallelism: 20000
-  template:
-    metadata:
-      name: test-job4
-      annotations:
-        resource.aibee.cn/pool: staging-cpu-pool
-    spec:
-      schedulerName: ai-scheduler
-      containers:
-        - name: pi
-          image: perl
-          command: ["perl"]
-          args: ["-Mbignum=bpi", "-wle", "print bpi(200)"]
-          resources:
-            limits:
-              cpu: 100m
-              memory: 100M
-            requests:
-              cpu: 100m
-              memory: 100M
-      restartPolicy: Never
-  backoffLimit: 1
-
