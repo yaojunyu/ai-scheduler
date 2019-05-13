@@ -1,12 +1,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: test-job1
+  name: test-job-i-cpu
 spec:
-  parallelism: 10000
+  parallelism: 100
   template:
     metadata:
-      name: test-job1
+      name: test-job-i-cpu
       annotations:
         resource.aibee.cn/pool: cpu-pool
     spec:
@@ -21,10 +21,41 @@ spec:
             limits:
               cpu: 1000m
               memory: 100M
-              "nvidia.com/gpu": "1"
+#              "nvidia.com/gpu": "1"
             requests:
               cpu: 1000m
               memory: 100M
-              "nvidia.com/gpu": "1"
+#              "nvidia.com/gpu": "1"
+      restartPolicy: Never
+  backoffLimit: 1
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-job-i-gpu
+spec:
+  parallelism: 100
+  template:
+    metadata:
+      name: test-job-i-gpu
+      annotations:
+        resource.aibee.cn/pool: gpu-pool
+    spec:
+      schedulerName: ai-scheduler
+      containers:
+        - name: pi
+          image: perl
+          command: ["perl"]
+          args: ["-Mbignum=bpi", "-wle", "print bpi(20000)"]
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 100M
+            #              "nvidia.com/gpu": "1"
+            requests:
+              cpu: 1000m
+              memory: 100M
+      #              "nvidia.com/gpu": "1"
       restartPolicy: Never
   backoffLimit: 1

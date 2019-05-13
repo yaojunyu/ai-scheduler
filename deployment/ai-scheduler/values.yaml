@@ -9,11 +9,11 @@ restartPolicy: Always
 
 resources:
   limits:
-    cpu: 2000m
-    memory: 2048Mi
+    cpu: 4
+    memory: 4Gi
   requests:
-    cpu: 2000m
-    memory: 2048Mi
+    cpu: 4
+    memory: 4Gi
 
 securePort: 20888
 healthzPort: 20999
