@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-      rbac.authorization.kubernetes.io/autoupdate: "true"
+    rbac.authorization.kubernetes.io/autoupdate: "true"
     "helm.sh/hook": "pre-install"
   name: system:{{ .Chart.Name }}
 rules:
