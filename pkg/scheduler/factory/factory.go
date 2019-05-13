@@ -775,7 +775,7 @@ func findBestPodQueueToSchedule(poolName string, pod *v1.Pod, poolQueue internal
 			for _, n := range pi.Nodes() {
 				fit, failedPredicates, err := predicates.PodFitsResources(pod, nil, n.Info())
 				if !fit {
-					klog.Errorf("Error pod fit resources failed err: %v, reasons: %v", err, failedPredicates)
+					klog.V(5).Infof("skip node %v as pod fit resources failed err: %v, reasons: %v", n.Info().Node(), err, failedPredicates)
 					continue
 				}
 				return pi.Name()
