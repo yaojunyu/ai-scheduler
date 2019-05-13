@@ -773,14 +773,12 @@ func findBestPodQueueToSchedule(poolName string, pod *v1.Pod, poolQueue internal
 			klog.V(4).Infof("Attempt borrowing %v for pod %v/%v@%v in queue %v", pi.Name(), pod.Namespace, pod.Name, selfPoolName, poolName)
 			// predicate for nodes of pool
 			for _, n := range pi.Nodes() {
-				fit, _, err := predicates.PodFitsResources(pod, nil, n.Info())
-				if err != nil {
-					klog.Errorf("Error pod fit resources failed: %v", err)
+				fit, failedPredicates, err := predicates.PodFitsResources(pod, nil, n.Info())
+				if !fit {
+					klog.Errorf("Error pod fit resources failed err: %v, reasons: %v", err, failedPredicates)
 					continue
 				}
-				if fit {
-					return pi.Name()
-				}
+				return pi.Name()
 			}
 		}
 	}
