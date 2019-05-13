@@ -1,7 +1,7 @@
 BIN_DIR=_output/bin
 MAJOR_VER=0
 Minor_VER=1
-RELEASE_VER=v0.1.0-beta1
+RELEASE_VER=v0.1.0
 REPO_PATH=gitlab.aibee.cn/platform/ai-scheduler
 GitSHA=`git rev-parse HEAD`
 Date=`date "+%Y-%m-%d %H:%M:%S"`
