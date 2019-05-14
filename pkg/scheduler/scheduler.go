@@ -701,36 +701,41 @@ func (sched *Scheduler) PrintPools() {
 %s`
 		poolName := p.Name()
 
+		capacity := p.Capacity()
+		allocatable := p.Allocatable()
+		used := p.Used()
+		shared := p.Shared()
+
 		pendingRes := info.CalculateSumPodsRequestResource(q.PendingPods())
 		if p.Name() == "" {
 			poolName = "Default"
 		}
 		log += fmt.Sprintf(detail,
-			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), p.Capacity().MilliCPU,
-			p.Allocatable().MilliCPU, p.Used().MilliCPU,
-			p.Shared().MilliCPU, p.Idle().MilliCPU, pendingRes.MilliCPU, totalRes.MilliCPU,
+			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), capacity.MilliCPU,
+			allocatable.MilliCPU, used.MilliCPU,
+			shared.MilliCPU, pendingRes.MilliCPU, totalRes.MilliCPU,
 
 			"", fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[info.ResourceGPU]),
-			p.Capacity().ScalarResources[info.ResourceGPU], p.Allocatable().ScalarResources[info.ResourceGPU],
-			p.Used().ScalarResources[info.ResourceGPU], p.Shared().ScalarResources[info.ResourceGPU],
-			p.Idle().ScalarResources[info.ResourceGPU], pendingRes.GetValue(info.ResourceGPU),
+			capacity.ScalarResources[info.ResourceGPU], allocatable.ScalarResources[info.ResourceGPU],
+			used.ScalarResources[info.ResourceGPU], shared.ScalarResources[info.ResourceGPU],
+			p.Idle().ScalarResources[info.ResourceGPU], pendingRes.ScalarResources[info.ResourceGPU],
 			totalRes.ScalarResources[info.ResourceGPU],
 
-			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), p.Capacity().Memory,
-			p.Allocatable().Memory, p.Used().Memory, p.Shared().Memory,
-			p.Idle().Memory, pendingRes.Memory, totalRes.Memory,
+			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), capacity.Memory,
+			allocatable.Memory, used.Memory, shared.Memory,
+			pendingRes.Memory, totalRes.Memory,
 
 			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]),
-			p.Capacity().EphemeralStorage, p.Allocatable().EphemeralStorage,
-			p.Used().EphemeralStorage, p.Shared().EphemeralStorage, p.Idle().EphemeralStorage,
+			capacity.EphemeralStorage, allocatable.EphemeralStorage,
+			used.EphemeralStorage, shared.EphemeralStorage,
 			pendingRes.EphemeralStorage, totalRes.EphemeralStorage,
 
-			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/cache.NodeTree(p.Name()).NumNodes(),
+			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/p.NumNodes(),
 			cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", "-", cache.NumNodes(),
 
 			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]),
-			p.Capacity().AllowedPodNumber, p.Allocatable().AllowedPodNumber,
-			p.Used().AllowedPodNumber, p.Shared().AllowedPodNumber, p.Idle().AllowedPodNumber,
+			capacity.AllowedPodNumber, allocatable.AllowedPodNumber,
+			used.AllowedPodNumber, shared.AllowedPodNumber,
 			pendingRes.AllowedPodNumber, totalRes.AllowedPodNumber,
 
 			strings.Repeat("-", lineWidth),

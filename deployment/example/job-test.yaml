@@ -3,8 +3,8 @@ kind: Job
 metadata:
   name: test-job1
 spec:
-  completions: 100000
-  parallelism: 100000
+  completions: 1
+  parallelism: 1
   activeDeadlineSeconds: 100
   template:
     metadata:
