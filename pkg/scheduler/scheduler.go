@@ -671,9 +671,9 @@ func (sched *Scheduler) PrintPools() {
 
 	totalRes := cache.TotalAllocatableResource()
 	var log = fmt.Sprintf(`All Pools Detail:
-%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s
+%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s
 %s`,
-		"Pools", "Resource(w)", "Capacity", "Allocatable", "Used", "Shared", "Idle", "Pending", "Total",
+		"Pools", "Resource(w)", "Capacity", "Allocatable", "Used", "Shared", "Pending", "Total",
 		strings.Repeat("-", lineWidth),
 	)
 	keys := make([]string, 0, cache.NumPools())
@@ -692,12 +692,12 @@ func (sched *Scheduler) PrintPools() {
 			continue
 		}
 		detail := `
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d%-20d
-%-20s%-20s%-20d%-20d%-20v%-20v%-20v%-20v%-20d
-%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
+%-20s%-20s%-20d%-20d%-20v%-20v%-20v%-20d
+%-20s%-20s%-20d%-20d%-20d%-20d%-20d%-20d
 %s`
 		poolName := p.Name()
 
@@ -718,7 +718,7 @@ func (sched *Scheduler) PrintPools() {
 			"", fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[info.ResourceGPU]),
 			capacity.ScalarResources[info.ResourceGPU], allocatable.ScalarResources[info.ResourceGPU],
 			used.ScalarResources[info.ResourceGPU], shared.ScalarResources[info.ResourceGPU],
-			p.Idle().ScalarResources[info.ResourceGPU], pendingRes.ScalarResources[info.ResourceGPU],
+			pendingRes.ScalarResources[info.ResourceGPU],
 			totalRes.ScalarResources[info.ResourceGPU],
 
 			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), capacity.Memory,
@@ -731,7 +731,7 @@ func (sched *Scheduler) PrintPools() {
 			pendingRes.EphemeralStorage, totalRes.EphemeralStorage,
 
 			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/p.NumNodes(),
-			cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", "-", cache.NumNodes(),
+			cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", cache.NumNodes(),
 
 			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]),
 			capacity.AllowedPodNumber, allocatable.AllowedPodNumber,
