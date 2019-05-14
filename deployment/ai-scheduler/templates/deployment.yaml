@@ -64,6 +64,11 @@ spec:
             name: {{ .Chart.Name }}-config
       dnsPolicy: ClusterFirst
       hostNetwork: true
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Equal"
+          value: ""
+          effect: "NoSchedule"
       nodeSelector:
         kubernetes.io/role: master
       priorityClassName: system-cluster-critical
