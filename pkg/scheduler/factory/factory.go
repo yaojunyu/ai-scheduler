@@ -770,12 +770,12 @@ func findBestPodQueueToSchedule(poolName string, pod *v1.Pod, poolQueue internal
 		sharingPools.Sort()
 		for _, p := range sharingPools.Items {
 			pi := p.(*info.PoolInfo)
-			klog.V(4).Infof("Attempt borrowing %v for pod %v/%v@%v in queue %v", pi.Name(), pod.Namespace, pod.Name, selfPoolName, poolName)
+			klog.V(4).Infof("Attempt borrowing %v for pod %v/%v@%v in queue '%v'", pi.Name(), pod.Namespace, pod.Name, selfPoolName, poolName)
 			// predicate for nodes of pool
-			for _, n := range pi.Nodes() {
-				fit, failedPredicates, err := predicates.PodFitsResources(pod, nil, n.Info())
+			for _, ni := range schedulerCache.NodeInfoSnapshot(poolName).NodeInfoMap {
+				fit, failedPredicates, err := predicates.PodFitsResources(pod, nil, ni)
 				if !fit {
-					klog.V(5).Infof("skip node %v as pod fit resources failed err: %v, reasons: %v", n.Info().Node(), err, failedPredicates)
+					klog.V(5).Infof("Skip node %v as pod fit resources failed err: %v, reasons: %v", ni.Node(), err, failedPredicates)
 					continue
 				}
 				return pi.Name()
