@@ -11,6 +11,7 @@ import (
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/features"
 )
+
 const (
 	// ResourceGPU need to follow https://github.com/NVIDIA/k8s-device-plugin/blob/66a35b71ac4b5cbfb04714678b548bd77e5ba719/server.go#L20
 	ResourceGPU = "nvidia.com/gpu"
@@ -25,7 +26,7 @@ type PoolInfo struct {
 
 	// All nodes matched to this pool, key as node name
 	//nodes map[string]*NodeInfo
-	nodes     map[string]*NodeInfoListItem
+	nodes map[string]*NodeInfoListItem
 	// headNode points to the most recently updated NodeInfo in "nodes". It is the
 	// head of the linked list.
 	headNode *NodeInfoListItem
@@ -38,9 +39,9 @@ type PoolInfo struct {
 	// Resources divided to the pool
 	allocatable *Resource
 	// All resources used by pods
-	used 	 *Resource
+	used *Resource
 	// Resources borrowed by other task from other pool
-	shared   *Resource
+	shared *Resource
 
 	// nodeInfoSnapshot
 	nodeInfoSnapshot *NodeInfoSnapshot
@@ -77,12 +78,12 @@ func (p *PoolInfo) HeadNode() *NodeInfoListItem {
 
 func NewPoolInfo() *PoolInfo {
 	pi := &PoolInfo{
-		pool: 		 nil,
+		pool: nil,
 		//nodes:       map[string]*NodeInfo{},
-		nodes:       make(map[string]*NodeInfoListItem),
-		nodeTree:    newNodeTree(nil),
+		nodes:    make(map[string]*NodeInfoListItem),
+		nodeTree: newNodeTree(nil),
 
-		capacity: 	 &Resource{},
+		capacity:    &Resource{},
 		allocatable: &Resource{},
 		used:        &Resource{},
 		shared:      &Resource{},
@@ -439,8 +440,7 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 	}
 
 	if p.pool.Spec.NodeSelector != nil {
-		if selector, err := metav1.LabelSelectorAsSelector(p.pool.Spec.NodeSelector);
-		    err == nil && !selector.Matches(labels.Set(node.Labels)) {
+		if selector, err := metav1.LabelSelectorAsSelector(p.pool.Spec.NodeSelector); err == nil && !selector.Matches(labels.Set(node.Labels)) {
 			return false
 		}
 	}
@@ -488,7 +488,7 @@ func (p *PoolInfo) NeedMatchNodes(name v1.ResourceName) bool {
 
 	return p.pool.Spec.NodeSelector != nil ||
 		(p.pool.Spec.SupportResources != nil &&
-		len(p.pool.Spec.SupportResources) > 0)
+			len(p.pool.Spec.SupportResources) > 0)
 }
 
 func (p *PoolInfo) NeedMatchNodeLabel() bool {
@@ -505,7 +505,7 @@ func (p *PoolInfo) NeedMatchNodeResource(name v1.ResourceName) bool {
 	}
 
 	return p.pool.Spec.SupportResources != nil &&
-			len(p.pool.Spec.SupportResources) > 0
+		len(p.pool.Spec.SupportResources) > 0
 }
 
 // newNodeInfoListItem initializes a new nodeInfoListItem.
@@ -577,7 +577,12 @@ func (p *PoolInfo) UpdateNodeInfoSnapshot() error {
 
 	// Start from the head of the NodeInfo doubly linked list and update snapshot
 	// of NodeInfos updated after the last snapshot.
-	for node := p.headNode; node != nil; node = node.next {
+	// fast used to check doubly link if has circle
+	fast := p.headNode
+	node := p.headNode
+	prev := p.headNode
+	hasCircle := false
+	for node != nil {
 		if node.info.GetGeneration() <= snapshotGeneration {
 			// all the nodes are updated before the existing snapshot. We are done.
 			break
@@ -589,6 +594,25 @@ func (p *PoolInfo) UpdateNodeInfoSnapshot() error {
 		if np := node.info.Node(); np != nil {
 			nodeSnapshot.NodeInfoMap[np.Name] = node.info.Clone()
 		}
+		prev = node
+		node = node.next
+		if fast != nil && fast.next != nil {
+			fast = fast.next.next
+		}
+		if node == fast && node != nil {
+			hasCircle = true
+			klog.Warningf("Warning nodes doubly link has circle!!")
+			break
+		}
+	}
+	// find circle entry point and break the circle
+	if hasCircle {
+		for fast = p.headNode; node != fast; fast = fast.next {
+			prev = node
+			node = node.next
+		}
+		klog.Warningf("Warning break the doubly link circle")
+		prev.next = nil
 	}
 	// Update the snapshot generation with the latest NodeInfo generation.
 	if p.headNode != nil {
