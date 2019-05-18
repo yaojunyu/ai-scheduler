@@ -53,6 +53,7 @@ var (
 
 // used to check error to stop scheduling goroutine
 var PriorityQueueClosedError = errors.New(queueClosed)
+var PriorityQueueDeletedError = errors.New("queue deleted")
 
 // If the pod stays in unschedulableQ longer than the unschedulableQTimeInterval,
 // the pod will be moved from unschedulableQ to activeQ.
@@ -108,6 +109,7 @@ func NewSchedulingQueue(stop <-chan struct{}) SchedulingQueue {
 	}
 	return NewFIFO()
 }
+
 // FIFO is basically a simple wrapper around cache.FIFO to make it compatible
 // with the SchedulingQueue interface.
 type FIFO struct {
@@ -299,6 +301,7 @@ func activeQComp(podInfo1, podInfo2 interface{}) bool {
 func NewPriorityQueue(stop <-chan struct{}) *PriorityQueue {
 	return NewPriorityQueueWithClock(stop, util.RealClock{})
 }
+
 // NewPriorityQueueWithLessFunc creates a PriorityQueue object.
 func NewPriorityQueueWithLessFunc(lessFunc util.LessFunc, stop <-chan struct{}) *PriorityQueue {
 	return NewPriorityQueueWithLessFuncAndClock(lessFunc, stop, util.RealClock{})
@@ -306,6 +309,7 @@ func NewPriorityQueueWithLessFunc(lessFunc util.LessFunc, stop <-chan struct{}) 
 func NewPriorityQueueWithClock(stop <-chan struct{}, clock util.Clock) *PriorityQueue {
 	return NewPriorityQueueWithLessFuncAndClock(activeQComp, stop, clock)
 }
+
 // NewPriorityQueueWithClock creates a PriorityQueue which uses the passed clock for time.
 func NewPriorityQueueWithLessFuncAndClock(lessFunc util.LessFunc, stop <-chan struct{}, clock util.Clock) *PriorityQueue {
 	pq := &PriorityQueue{
@@ -924,17 +928,16 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 		q, err := queues.GetQueue(poolName)
 		if err != nil {
 			klog.Errorf("Error while getting poolQueue %s: %v", poolName, err)
-			return nil, err
+			return nil, PriorityQueueDeletedError
 		}
 
-		//for pod, err := q.Pop(); pod
 		pod, err := q.Pop()
 		for err == nil {
 			klog.V(4).Infof("About to try and schedule pod %v/%v in pool queue %v", pod.Namespace, pod.Name, poolName)
 			return pod, err
 
 		}
-		klog.Errorf("Error while retrieving next pod from scheduling queue: %v", err)
+		klog.Warningf("Error while retrieving next pod from scheduling queue %v: %v", poolName, err)
 		return nil, err
 	}
 }
