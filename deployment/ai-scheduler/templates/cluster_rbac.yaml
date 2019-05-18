@@ -3,7 +3,6 @@ kind: ClusterRole
 metadata:
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
-    "helm.sh/hook": "pre-install"
   name: system:{{ .Chart.Name }}
 rules:
   - apiGroups:
@@ -142,16 +141,12 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  annotations:
-    "helm.sh/hook": "pre-install"
   name: {{ .Chart.Name }}
   namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  annotations:
-    "helm.sh/hook": "pre-install"
   name: ai-scheduler-as-kube-scheduler
 roleRef:
   apiGroup: rbac.authorization.k8s.io

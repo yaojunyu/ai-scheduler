@@ -3,14 +3,14 @@ kind: Job
 metadata:
   name: test-job1
 spec:
-  completions: 1
-  parallelism: 1
-  activeDeadlineSeconds: 100
+  completions: 10000
+  parallelism: 10000
+  activeDeadlineSeconds: 10000
   template:
     metadata:
       name: test-job1
       annotations:
-        resource.aibee.cn/pool: prod-gpu-pool
+        resource.aibee.cn/pool: test-pool
     spec:
       schedulerName: ai-scheduler
       containers:

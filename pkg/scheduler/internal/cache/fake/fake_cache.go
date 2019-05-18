@@ -117,3 +117,5 @@ func (c *Cache) TotalAllocatableResource() *info.Resource { return nil }
 func (c *Cache) NodeInfoSnapshot(poolName string) *info.NodeInfoSnapshot { return nil }
 
 func (c *Cache) GetPoolContainsNode(nodeName string) *info.PoolInfo { return nil }
+
+func (c *Cache) BorrowPool(fromPoolName string, pod *v1.Pod) string { return "" }

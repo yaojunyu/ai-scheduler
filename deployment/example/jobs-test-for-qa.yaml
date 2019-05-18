@@ -52,10 +52,10 @@ spec:
             limits:
               cpu: 1000m
               memory: 100M
-            #              "nvidia.com/gpu": "1"
+              "nvidia.com/gpu": "100"
             requests:
               cpu: 1000m
               memory: 100M
-      #              "nvidia.com/gpu": "1"
+              "nvidia.com/gpu": "100"
       restartPolicy: Never
   backoffLimit: 1
