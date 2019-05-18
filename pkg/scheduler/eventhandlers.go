@@ -18,11 +18,12 @@ package scheduler
 
 import (
 	"fmt"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"k8s.io/klog"
 	"reflect"
 
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	resourceinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
+	scheduercache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -105,7 +106,7 @@ func (sched *Scheduler) addPoolToCache(obj interface{}) {
 		klog.Errorf("scheduler queue AddQueue failed: %v", err)
 		return
 	}
-
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 	// notify start scheduling queue
 	go func() {
 		sched.config.StartSchedulingQueue <- pool.Name
@@ -126,6 +127,10 @@ func (sched *Scheduler) updatePoolInCache(oldObj, newObj interface{}) {
 
 	if err := sched.config.SchedulerCache.UpdatePool(oldPool, newPool); err != nil {
 		klog.Errorf("scheduler cache UpdatePool failed: %v", err)
+	}
+
+	if scheduercache.PoolResourcePropertiesChanged(oldPool, newPool) {
+		sched.config.PoolQueue.MoveAllToActiveQueue()
 	}
 }
 
@@ -156,13 +161,8 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 		return
 	}
 
-	// stop scheduling goroutine before removing
-	sched.config.PoolQueue.CloseQ(pool.Name)
-
-	if err := sched.config.PoolQueue.RemoveQueue(pool.Name); err != nil {
-		klog.Errorf("scheduler PoolQueue RemoveQueue failed: %v", err)
-		return
-	}
+	sched.config.PoolQueue.RemoveQueue(pool.Name)
+	sched.config.PoolQueue.MoveAllToActiveQueue()
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {
@@ -470,7 +470,7 @@ func AddAllEventHandlers(
 
 	poolInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: 	sched.addPoolToCache,
+			AddFunc:    sched.addPoolToCache,
 			UpdateFunc: sched.updatePoolInCache,
 			DeleteFunc: sched.deletePoolFromCache,
 		},
