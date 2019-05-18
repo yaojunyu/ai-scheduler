@@ -149,7 +149,7 @@ func New(client clientset.Interface,
 	configurator := factory.NewConfigFactory(&factory.ConfigFactoryArgs{
 		SchedulerName:                  options.schedulerName,
 		Client:                         client,
-		PoolInformer:					poolInformer,
+		PoolInformer:                   poolInformer,
 		NodeInformer:                   nodeInformer,
 		PodInformer:                    podInformer,
 		PvInformer:                     pvInformer,
@@ -644,11 +644,10 @@ func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct
 			defer runtimeutil.HandleCrash()
 			err = f(poolName)
 		}()
-		if err == queue.PriorityQueueClosedError {
+		if err == queue.PriorityQueueClosedError || err == queue.PriorityQueueDeletedError {
 			klog.V(3).Infof("Stopping scheduling for pool %s as Pool Deleted", poolName)
 			return
 		}
-
 
 		// NOTE: b/c there is no priority selection in golang
 		// it is possible for this to race, meaning we could
@@ -667,7 +666,7 @@ func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct
 // printScheduler print all pools cache and pool queue detail
 func (sched *Scheduler) PrintPools() {
 	cache := sched.config.SchedulerCache
-	lineWidth := 180
+	lineWidth := 160
 
 	totalRes := cache.TotalAllocatableResource()
 	var log = fmt.Sprintf(`All Pools Detail:
@@ -682,7 +681,7 @@ func (sched *Scheduler) PrintPools() {
 	}
 	sort.Sort(sort.StringSlice(keys))
 
-	for _, key := range keys  {
+	for _, key := range keys {
 		p, err := cache.GetPool(key)
 		if err != nil {
 			continue
@@ -705,32 +704,45 @@ func (sched *Scheduler) PrintPools() {
 		allocatable := p.Allocatable()
 		used := p.Used()
 		shared := p.Shared()
+		disablePreemption := "√"
+		disableBorrowing := "√"
+		disableSharing := "√"
+		if p.DisablePreemption() {
+			disablePreemption = "x"
+		}
+		if p.DisableBorrowing() {
+			disableBorrowing = "x"
+		}
+		if p.DisableSharing() {
+			disableSharing = "x"
+		}
 
 		pendingRes := info.CalculateSumPodsRequestResource(q.PendingPods())
 		if p.Name() == "" {
 			poolName = "Default"
 		}
 		log += fmt.Sprintf(detail,
-			"", fmt.Sprintf("cpu(%d)",p.GetPoolWeight()[v1.ResourceCPU]), capacity.MilliCPU,
+			"", fmt.Sprintf("cpu(%d)", p.GetPoolWeight()[v1.ResourceCPU]), capacity.MilliCPU,
 			allocatable.MilliCPU, used.MilliCPU,
 			shared.MilliCPU, pendingRes.MilliCPU, totalRes.MilliCPU,
 
-			"", fmt.Sprintf("gpu(%d)",p.GetPoolWeight()[info.ResourceGPU]),
+			"", fmt.Sprintf("gpu(%d)", p.GetPoolWeight()[info.ResourceGPU]),
 			capacity.ScalarResources[info.ResourceGPU], allocatable.ScalarResources[info.ResourceGPU],
 			used.ScalarResources[info.ResourceGPU], shared.ScalarResources[info.ResourceGPU],
 			pendingRes.ScalarResources[info.ResourceGPU],
 			totalRes.ScalarResources[info.ResourceGPU],
 
-			poolName, fmt.Sprintf("mem(%d)",p.GetPoolWeight()[v1.ResourceMemory]), capacity.Memory,
+			poolName, fmt.Sprintf("mem(%d)", p.GetPoolWeight()[v1.ResourceMemory]), capacity.Memory,
 			allocatable.Memory, used.Memory, shared.Memory,
 			pendingRes.Memory, totalRes.Memory,
 
-			"", fmt.Sprintf("storage(%d)",p.GetPoolWeight()[v1.ResourceEphemeralStorage]),
+			fmt.Sprintf("(p=%v,b=%v,s=%v)", disablePreemption, disableBorrowing, disableSharing),
+			fmt.Sprintf("storage(%d)", p.GetPoolWeight()[v1.ResourceEphemeralStorage]),
 			capacity.EphemeralStorage, allocatable.EphemeralStorage,
 			used.EphemeralStorage, shared.EphemeralStorage,
 			pendingRes.EphemeralStorage, totalRes.EphemeralStorage,
 
-			"", "nodes", /*cache.pools[p.Name()].NumNodes()*/p.NumNodes(),
+			"", "nodes" /*cache.pools[p.Name()].NumNodes()*/, p.NumNodes(),
 			cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", cache.NumNodes(),
 
 			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]),
