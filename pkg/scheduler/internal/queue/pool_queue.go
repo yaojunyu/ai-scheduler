@@ -13,7 +13,7 @@ import (
 type SchedulingPoolQueue interface {
 	GetQueue(poolName string) (SchedulingQueue, error)
 	AddQueue(poolName string, stopCh <-chan struct{}) (SchedulingQueue, error)
-	RemoveQueue(poolName string) error
+	RemoveQueue(poolName string)
 	Add(pod *v1.Pod) error
 	AddIfNotPresent(pod *v1.Pod) error
 	Delete(pod *v1.Pod) error
@@ -31,7 +31,6 @@ type SchedulingPoolQueue interface {
 
 	GetPoolQueueNameIfNotPresent(pod *v1.Pod) string
 	Close()
-	CloseQ(poolName string)
 }
 
 var _ = SchedulingPoolQueue(&PoolQueue{})
@@ -94,17 +93,30 @@ func (pq *PoolQueue) AddQueue(poolName string, stopCh <-chan struct{}) (Scheduli
 	return q, nil
 }
 
-func (pq *PoolQueue) RemoveQueue(poolName string) error {
+func (pq *PoolQueue) RemoveQueue(poolName string) {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	if _, ok := pq.queues[poolName]; !ok {
-		return fmt.Errorf("pool queue %v not found", poolName)
+	q, ok := pq.queues[poolName]
+	if !ok {
+		return
 	}
 	delete(pq.queues, poolName)
-	return nil
+	if df, ok := pq.queues[info.DefaultPoolName]; !ok {
+		klog.Errorf("default pool queue not exists")
+	} else {
+		// remove all pending pods to default pool queue
+		for _, pod := range q.PendingPods() {
+			if err := df.AddIfNotPresent(pod); err != nil {
+				klog.Errorf("Error move pod %v/%v to default pool queue failed: %v", pod.Namespace, pod.Name, err)
+			} else {
+				klog.V(4).Infof("moved pod %v/%v from pool queue %v to default pool queue", pod.Namespace, pod.Name, poolName)
+			}
+		}
+	}
+	q.Close()
 }
 
-func(pq *PoolQueue) Add(pod *v1.Pod) error {
+func (pq *PoolQueue) Add(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
 	poolName := info.GetPodAnnotationsPoolName(pod)
@@ -256,17 +268,6 @@ func (pq *PoolQueue) Close() {
 	}
 }
 
-func (pq *PoolQueue) CloseQ(poolName string) {
-	pq.lock.Lock()
-	defer pq.lock.Unlock()
-	q, ok := pq.queues[poolName]
-	if !ok {
-		klog.Errorf("Error: pool queue %v not exists, close failed", poolName)
-		return
-	}
-	q.Close()
-}
-
 func (pq *PoolQueue) getPriorityQueue(poolName string) (SchedulingQueue, string, error) {
 	if q, ok := pq.queues[poolName]; ok {
 		return q, poolName, nil
@@ -313,7 +314,6 @@ func (pq *PoolQueue) poolQueuePodPriorityComp(poolName string) util.LessFunc {
 func (pq *PoolQueue) GetPoolQueueNameIfNotPresent(pod *v1.Pod) string {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-
 	return pq.matchPoolQueueNameForPod(pod)
 }
 
