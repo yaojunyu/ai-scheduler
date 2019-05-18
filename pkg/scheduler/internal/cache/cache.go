@@ -1016,7 +1016,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 			for _, ni := range pi.Nodes() { // FIXME
 				fit, failedPredicates, err := predicates.PodFitsResources(pod, nil, ni.Info())
 				if !fit {
-					klog.V(4).Infof("Skip node %v as pod fit resources failed err: %v, reasons: %v", ni.Info().Node().Name, err, failedPredicates)
+					klog.V(4).Infof("Skip node %v/%v as pod not fit resources: %v, reasons: %v", pi.Name(), ni.Info().Node().Name, err, failedPredicates)
 					continue
 				}
 				return pi.Name()

@@ -32,10 +32,10 @@ import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
 	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	pluginsv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/plugins/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
@@ -1189,14 +1189,14 @@ func NewGenericScheduler(
 	percentageOfNodesToScore int32,
 ) ScheduleAlgorithm {
 	return &genericScheduler{
-		cache:                    cache,
-		schedulingQueue:          poolQueue,
-		predicates:               predicates,
-		predicateMetaProducer:    predicateMetaProducer,
-		prioritizers:             prioritizers,
-		priorityMetaProducer:     priorityMetaProducer,
-		pluginSet:                pluginSet,
-		extenders:                extenders,
+		cache:                 cache,
+		schedulingQueue:       poolQueue,
+		predicates:            predicates,
+		predicateMetaProducer: predicateMetaProducer,
+		prioritizers:          prioritizers,
+		priorityMetaProducer:  priorityMetaProducer,
+		pluginSet:             pluginSet,
+		extenders:             extenders,
 		//nodeInfoSnapshot:         schedulerinternalcache.NewNodeInfoSnapshot(),
 		volumeBinder:             volumeBinder,
 		pvcLister:                pvcLister,
