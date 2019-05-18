@@ -122,7 +122,7 @@ type Cache interface {
 	// UpdateNodeInfoSnapshot updates the passed infoSnapshot to the current contents of Cache.
 	// The node info contains aggregated information of pods scheduled (including assumed to be)
 	// on this node.
-	UpdateNodeInfoSnapshot(poolName string/*, nodeSnapshot *schedulerinfo.NodeInfoSnapshot*/) error
+	UpdateNodeInfoSnapshot(poolName string /*, nodeSnapshot *schedulerinfo.NodeInfoSnapshot*/) error
 
 	// List lists all cached pods (including assumed ones).
 	List(labels.Selector) ([]*v1.Pod, error)
@@ -143,5 +143,7 @@ type Cache interface {
 
 	// TotalAllocatableResource calculate all allocatable resources
 	TotalAllocatableResource() *schedulerinfo.Resource
-}
 
+	// BorrowPool get pool to borrow
+	BorrowPool(fromPoolName string, pod *v1.Pod) string
+}
