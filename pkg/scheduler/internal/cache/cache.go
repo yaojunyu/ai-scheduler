@@ -18,14 +18,15 @@ package cache
 
 import (
 	"fmt"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"reflect"
 	"sync"
 	"time"
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -101,7 +102,7 @@ func newSchedulerCache(ttl, period time.Duration, stop <-chan struct{}) *schedul
 		podStates:   make(map[string]*podState),
 		imageStates: make(map[string]*imageState),
 
-		pools:		 make(map[string]*schedulerinfo.PoolInfo),
+		pools: make(map[string]*schedulerinfo.PoolInfo),
 	}
 	// add nodeTree for default pool
 	cache.pools[schedulerinfo.DefaultPoolName] = schedulerinfo.NewPoolInfo()
@@ -441,7 +442,7 @@ func (cache *schedulerCache) UpdatePool(oldPool, newPool *v1alpha1.Pool) error {
 	}
 	pi.SetPool(newPool)
 	// check if need change
-	if poolResourcePropertiesChanged(oldPool, newPool) {
+	if PoolResourcePropertiesChanged(oldPool, newPool) {
 		// gc resources to default pool
 		if err := cache.addToDefaultPool(pi); err != nil {
 			return err
@@ -451,7 +452,7 @@ func (cache *schedulerCache) UpdatePool(oldPool, newPool *v1alpha1.Pool) error {
 	return nil
 }
 
-func poolResourcePropertiesChanged(oldPool, newPool *v1alpha1.Pool) bool {
+func PoolResourcePropertiesChanged(oldPool, newPool *v1alpha1.Pool) bool {
 	if (oldPool == nil && newPool == nil) || newPool == nil {
 		return false
 	}
@@ -514,11 +515,10 @@ func (cache *schedulerCache) addToDefaultPool(p *schedulerinfo.PoolInfo) error {
 	}
 	df := cache.defaultPool()
 	for _, item := range p.Nodes() {
-		// if node already exists will return err, avoided node conflicts
-		if err := df.AddNodeInfo(item); err != nil {
+		if err := p.RemoveNodeInfo(item); err != nil {
 			return err
 		}
-		if err := p.RemoveNodeInfo(item); err != nil {
+		if err := df.AddNodeInfo(item); err != nil {
 			return err
 		}
 	}
@@ -531,10 +531,14 @@ func (cache *schedulerCache) subFromDefaultPool(p *schedulerinfo.PoolInfo) error
 	}
 	df := cache.defaultPool()
 	// only sub matched node from default pool
-	for _, ni := range df.Nodes() {
-		if p.MatchNode(ni.Info().Node()) {
-			df.RemoveNodeInfo(ni)
-			p.AddNodeInfo(ni)
+	for _, item := range df.Nodes() {
+		if p.MatchNode(item.Info().Node()) {
+			if err := df.RemoveNodeInfo(item); err != nil {
+				return err
+			}
+			if err := p.AddNodeInfo(item); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -638,9 +642,16 @@ func (cache *schedulerCache) matchPoolForPod(pod *v1.Pod) *schedulerinfo.PoolInf
 				return pi
 			}
 		}
+		klog.Warningf("Warning not any pool matched for pod %v", pod.Name)
+		return cache.defaultPool()
+	} else {
+		poolName := schedulerinfo.GetPodAnnotationsPoolName(pod)
+		if p, ok := cache.pools[poolName]; ok {
+			return p
+		} else {
+			return cache.defaultPool()
+		}
 	}
-	klog.Warningf("Warning not any pool matched for pod %v", pod.Name)
-	return cache.defaultPool()
 }
 
 func (cache *schedulerCache) defaultPool() *schedulerinfo.PoolInfo {
@@ -746,8 +757,6 @@ func (cache *schedulerCache) expirePod(key string, ps *podState) error {
 }
 
 func (cache *schedulerCache) NodeTree(poolName string) *schedulerinfo.NodeTree {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
 	return cache.pools[poolName].NodeTree()
 }
 
@@ -857,7 +866,7 @@ func (cache *schedulerCache) deserveWeightedPools(remain *schedulerinfo.Resource
 		for rn, tw := range totalWeights {
 			if !p.HasQuota(rn) && p.Weighted(rn) {
 				ratio := cache.calculateRatio(p, rn, tw)
-				p.SetAllocatableResource(rn, int64(float64(remain.GetValue(rn)) * ratio))
+				p.SetAllocatableResource(rn, int64(float64(remain.GetValue(rn))*ratio))
 			}
 
 		}
@@ -914,7 +923,7 @@ func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
 					p.SetAllocatableResource(n, quotaV)
 				}
 			}
-			remain.SetValue(n, remainResV - totalResQuotaV)
+			remain.SetValue(n, remainResV-totalResQuotaV)
 		}
 	}
 }
@@ -972,4 +981,48 @@ func (cache *schedulerCache) GetPoolContainsNode(nodeName string) *schedulerinfo
 		}
 	}
 	return nil
+}
+
+func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	selfPoolInfo := cache.matchPoolForPod(pod)
+	selfPoolName := selfPoolInfo.Name()
+	if !selfPoolInfo.DisableBorrowing() {
+		higherIdleFunc := func(pool1, pool2 interface{}) bool {
+			p1 := pool1.(*schedulerinfo.PoolInfo)
+			p2 := pool2.(*schedulerinfo.PoolInfo)
+			// self pool has highest priority
+			if selfPoolName == p1.Name() && selfPoolName != p2.Name() {
+				return true
+			}
+			if selfPoolName != p1.Name() && selfPoolName == p2.Name() {
+				return false
+			}
+			return !p1.Idle().LessOrEqual(p2.Idle())
+		}
+		sharingPools := util.SortableList{CompFunc: higherIdleFunc}
+		for _, p := range cache.pools {
+			if p.DisableSharing() {
+				continue
+			}
+			sharingPools.Items = append(sharingPools.Items, p)
+		}
+		sharingPools.Sort()
+		for _, p := range sharingPools.Items {
+			pi := p.(*schedulerinfo.PoolInfo)
+			klog.V(4).Infof("Attempt to borrow %v for pod %v/%v@%v in queue '%v'", pi.Name(), pod.Namespace, pod.Name, selfPoolName, fromPoolName)
+			// predicate for nodes of pool
+			for _, ni := range pi.Nodes() { // FIXME
+				fit, failedPredicates, err := predicates.PodFitsResources(pod, nil, ni.Info())
+				if !fit {
+					klog.V(4).Infof("Skip node %v as pod fit resources failed err: %v, reasons: %v", ni.Info().Node().Name, err, failedPredicates)
+					continue
+				}
+				return pi.Name()
+			}
+		}
+	}
+	klog.V(4).Infof("pool %v disabled borrowing: %v, or Not any pools fit pod %v/%v", selfPoolName, selfPoolInfo.DisableBorrowing(), pod.Namespace, pod.Name)
+	return selfPoolName
 }
