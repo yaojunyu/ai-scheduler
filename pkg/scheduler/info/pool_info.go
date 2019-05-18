@@ -596,12 +596,14 @@ func (p *PoolInfo) UpdateNodeInfoSnapshot() error {
 		}
 		prev = node
 		node = node.next
-		if fast != nil && fast.next != nil {
-			fast = fast.next.next
+		if fast != nil {
+			if fast = fast.next; fast != nil {
+				fast = fast.next
+			}
 		}
-		if node == fast && node != nil {
+		if node != nil && fast != nil && node == fast {
 			hasCircle = true
-			klog.Warningf("Warning nodes doubly link has circle!!")
+			klog.Warningf("Warning nodes doubly link has circle!!!")
 			break
 		}
 	}
@@ -611,7 +613,7 @@ func (p *PoolInfo) UpdateNodeInfoSnapshot() error {
 			prev = node
 			node = node.next
 		}
-		klog.Warningf("Warning break the doubly link circle")
+		klog.Info("Break nodes doubly link circle")
 		prev.next = nil
 	}
 	// Update the snapshot generation with the latest NodeInfo generation.
