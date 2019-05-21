@@ -296,10 +296,11 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 		klog.V(5).Infof("Pod %v/%v is not eligible for more preemption.", pod.Namespace, pod.Name)
 		return nil, nil, nil, nil
 	}
-	allNodes, err := nodeLister.List()
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	//allNodes, err := nodeLister.List()
+	//if err != nil {
+	//	return nil, nil, nil, err
+	//}
+	allNodes := g.cache.NodeInfoSnapshot(poolName).Nodes()
 	if len(allNodes) == 0 {
 		return nil, nil, nil, ErrNoNodesAvailable
 	}

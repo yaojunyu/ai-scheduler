@@ -257,14 +257,6 @@ func (sched *Scheduler) Run() {
 	if !sched.config.WaitForCacheSync() {
 		return
 	}
-
-	//go func() {
-	//	for {
-	//		poolName := <-sched.config.SchedulingQueue.StartCh()
-	//		go scheduleOnePool(sched.scheduleOne, poolName, sched.config.StopEverything)
-	//	}
-	//}()
-	//go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
 	go wait.Until(sched.schedulePools, 0, sched.config.StopEverything)
 }
 
@@ -343,6 +335,7 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 				klog.Errorf("Error preempting pod %v/%v: %v", victim.Namespace, victim.Name, err)
 				return "", err
 			}
+			klog.V(4).Infof("Preempted pod %v/%v by %v/%v on node %v", victim.Namespace, victim.Name, preemptor.Namespace, preemptor.Name, nodeName)
 			sched.config.Recorder.Eventf(victim, v1.EventTypeNormal, "Preempted", "by %v/%v on node %v", preemptor.Namespace, preemptor.Name, nodeName)
 		}
 		metrics.PreemptionVictims.Set(float64(len(victims)))
