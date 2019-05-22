@@ -21,6 +21,7 @@ import (
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
 	"k8s.io/kubernetes/pkg/features"
@@ -113,4 +114,12 @@ func GetPoolResourceQuota(pool *v1alpha1.Pool, name v1.ResourceName) int64 {
 		}
 	}
 	return 0
+}
+
+// IsControledByJob
+func IsControlledByJob(pod *v1.Pod) bool {
+	if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
+		return controllerRef.Kind == "Job"
+	}
+	return false
 }
