@@ -108,8 +108,8 @@ type Config struct {
 	WaitForCacheSync func() bool
 
 	// Error is called if there is an error. It is passed the pod in
-	// question, and the error
-	Error func(string, *v1.Pod, error)
+	// question, and the error, bool whether pod need borrow succeed
+	Error func(string, *v1.Pod, error, bool)
 
 	// Recorder is the EventRecorder to use
 	Recorder record.EventRecorder
@@ -653,8 +653,8 @@ func NewPodInformer(client clientset.Interface, resyncPeriod time.Duration) core
 }
 
 // MakeDefaultErrorFunc construct a function to handle pod scheduler error
-func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, poolQueue internalqueue.SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache, stopEverything <-chan struct{}) func(poolName string, pod *v1.Pod, err error) {
-	return func(poolName string, pod *v1.Pod, err error) {
+func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, poolQueue internalqueue.SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache, stopEverything <-chan struct{}) func(poolName string, pod *v1.Pod, err error, needBorrow bool) {
+	return func(poolName string, pod *v1.Pod, err error, needBorrow bool) {
 		if err == core.ErrNoNodesAvailable {
 			klog.V(4).Infof("Unable to schedule %v/%v: no nodes are registered to the cluster; waiting", pod.Namespace, pod.Name)
 		} else {
@@ -708,7 +708,13 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 				pod, err := client.CoreV1().Pods(podID.Namespace).Get(podID.Name, metav1.GetOptions{})
 				if err == nil {
 					if len(pod.Spec.NodeName) == 0 {
-						bestPoolName := schedulerCache.BorrowPool(poolName, pod)
+						var bestPoolName string
+						// if preempt succeed skip borrowing
+						if needBorrow {
+							bestPoolName = schedulerCache.BorrowPool(poolName, pod)
+						} else {
+							bestPoolName = poolName
+						}
 						if bestPoolName == poolName {
 							// if is the same pool add pod to unscheduleable queue
 							if err := podQueue.AddUnschedulableIfNotPresent(pod, podSchedulingCycle); err == nil {

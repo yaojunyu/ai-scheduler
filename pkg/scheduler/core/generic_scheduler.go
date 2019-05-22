@@ -110,7 +110,7 @@ type ScheduleAlgorithm interface {
 	// the pod by preempting lower priority pods if possible.
 	// It returns the node where preemption happened, a list of preempted pods, a
 	// list of pods whose nominated node name should be removed, and error if any.
-	Preempt(string, *v1.Pod, algorithm.NodeLister, error) (selectedNode *v1.Node, preemptedPods []*v1.Pod, cleanupNominatedPods []*v1.Pod, err error)
+	Preempt(string, *v1.Pod, algorithm.NodeLister, error) (selectedNode *v1.Node, preemptedPods []*v1.Pod, cleanupNominatedPods []*v1.Pod, err error, needBorrow bool)
 	// Predicates() returns a pointer to a map of predicate functions. This is
 	// exposed for testing.
 	Predicates() map[string]predicates.FitPredicate
@@ -285,16 +285,16 @@ func (g *genericScheduler) selectHost(priorityList schedulerapi.HostPriorityList
 // other pods with the same priority. The nominated pod prevents other pods from
 // using the nominated resources and the nominated pod could take a long time
 // before it is retried after many other pending pods.
-func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error) {
+func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error, bool) {
 	// Scheduler may return various types of errors. Consider preemption only if
 	// the error is of type FitError.
 	fitError, ok := scheduleErr.(*FitError)
 	if !ok || fitError == nil {
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, false
 	}
 	if !podEligibleToPreemptOthers(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap) {
 		klog.V(5).Infof("Pod %v/%v is not eligible for more preemption.", pod.Namespace, pod.Name)
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, false
 	}
 	//allNodes, err := nodeLister.List()
 	//if err != nil {
@@ -302,22 +302,22 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	//}
 	allNodes := g.cache.NodeInfoSnapshot(poolName).Nodes()
 	if len(allNodes) == 0 {
-		return nil, nil, nil, ErrNoNodesAvailable
+		return nil, nil, nil, ErrNoNodesAvailable, true
 	}
 	potentialNodes := nodesWherePreemptionMightHelp(allNodes, fitError.FailedPredicates)
 	if len(potentialNodes) == 0 {
 		klog.V(3).Infof("Preemption will not help schedule pod %v/%v on any node.", pod.Namespace, pod.Name)
 		// In this case, we should clean-up any existing nominated node name of the pod.
-		return nil, nil, []*v1.Pod{pod}, nil
+		return nil, nil, []*v1.Pod{pod}, nil, true
 	}
 	pdbs, err := g.pdbLister.List(labels.Everything())
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, err, false
 	}
 	nodeToVictims, err := selectNodesForPreemption(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap, potentialNodes, g.predicates,
 		g.predicateMetaProducer, g.schedulingQueue, pdbs)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, err, false
 	}
 
 	// We will only check nodeToVictims with extenders that support preemption.
@@ -325,12 +325,12 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	// node. In that case, scheduler will find a different host for the preemptor in subsequent scheduling cycles.
 	nodeToVictims, err = g.processPreemptionWithExtenders(poolName, pod, nodeToVictims)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, err, false
 	}
 
 	candidateNode := pickOneNodeForPreemption(nodeToVictims)
 	if candidateNode == nil {
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, true
 	}
 
 	// Lower priority pods nominated to run on this node, may no longer fit on
@@ -339,12 +339,12 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	// lets scheduler find another place for them.
 	nominatedPods := g.getLowerPriorityNominatedPods(pod, candidateNode.Name)
 	if nodeInfo, ok := g.cache.NodeInfoSnapshot(poolName).NodeInfoMap[candidateNode.Name]; ok {
-		return nodeInfo.Node(), nodeToVictims[candidateNode].Pods, nominatedPods, nil
+		return nodeInfo.Node(), nodeToVictims[candidateNode].Pods, nominatedPods, nil, false
 	}
 
 	return nil, nil, nil, fmt.Errorf(
 		"preemption failed: the target node %s has been deleted from scheduler cache",
-		candidateNode.Name)
+		candidateNode.Name), false
 }
 
 // processPreemptionWithExtenders processes preemption with extenders

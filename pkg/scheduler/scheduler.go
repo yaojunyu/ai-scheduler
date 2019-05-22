@@ -269,7 +269,7 @@ func (sched *Scheduler) Config() *factory.Config {
 // pod has failed to schedule.
 // NOTE: This function modifies "pod". "pod" should be copied before being passed.
 func (sched *Scheduler) recordSchedulingFailure(poolName string, pod *v1.Pod, err error, reason string, message string) {
-	sched.config.Error(poolName, pod, err)
+	//sched.config.Error(poolName, pod, err)
 	sched.config.Recorder.Event(pod, v1.EventTypeWarning, "FailedScheduling", message)
 	sched.config.PodConditionUpdater.Update(pod, &v1.PodCondition{
 		Type:    v1.PodScheduled,
@@ -294,17 +294,17 @@ func (sched *Scheduler) schedule(poolName string, pod *v1.Pod) (core.ScheduleRes
 // preempt tries to create room for a pod that has failed to schedule, by preempting lower priority pods if possible.
 // If it succeeds, it adds the name of the node where preemption has happened to the pod annotations.
 // It returns the node name and an error if any.
-func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr error) (string, error) {
+func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr error) (string, error, bool) {
 	preemptor, err := sched.config.PodPreemptor.GetUpdatedPod(preemptor)
 	if err != nil {
 		klog.Errorf("Error getting the updated preemptor pod object: %v", err)
-		return "", err
+		return "", err, false
 	}
 
-	node, victims, nominatedPodsToClear, err := sched.config.Algorithm.Preempt(poolName, preemptor, sched.config.NodeLister, scheduleErr)
+	node, victims, nominatedPodsToClear, err, needBorrow := sched.config.Algorithm.Preempt(poolName, preemptor, sched.config.NodeLister, scheduleErr)
 	if err != nil {
 		klog.Errorf("Error preempting victims to make room for %v/%v.", preemptor.Namespace, preemptor.Name)
-		return "", err
+		return "", err, needBorrow
 	}
 	var nodeName = ""
 	if node != nil {
@@ -314,7 +314,7 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 		// and the time the scheduler receives a Pod Update for the nominated pod.
 		q, err := sched.config.PoolQueue.GetQueue(poolName)
 		if err != nil {
-			return "", err
+			return "", err, false
 		}
 		q.UpdateNominatedPodForNode(preemptor, nodeName)
 
@@ -324,16 +324,16 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 			klog.Errorf("Error in preemption process. Cannot update pod %v/%v annotations: %v", preemptor.Namespace, preemptor.Name, err)
 			q, err := sched.config.PoolQueue.GetQueue(poolName)
 			if err != nil {
-				return "", err
+				return "", err, false
 			}
 			q.DeleteNominatedPodIfExists(preemptor)
-			return "", err
+			return "", err, false
 		}
 
 		for _, victim := range victims {
 			if err := sched.config.PodPreemptor.DeletePod(victim); err != nil {
 				klog.Errorf("Error preempting pod %v/%v: %v", victim.Namespace, victim.Name, err)
-				return "", err
+				return "", err, false
 			}
 			klog.V(4).Infof("Preempted pod %v/%v by %v/%v on node %v", victim.Namespace, victim.Name, preemptor.Namespace, preemptor.Name, nodeName)
 			sched.config.Recorder.Eventf(victim, v1.EventTypeNormal, "Preempted", "by %v/%v on node %v", preemptor.Namespace, preemptor.Name, nodeName)
@@ -351,7 +351,7 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 			// We do not return as this error is not critical.
 		}
 	}
-	return nodeName, err
+	return nodeName, err, needBorrow
 }
 
 // assumeVolumes will update the volume cache with the chosen bindings
@@ -480,18 +480,38 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 		// preempt, with the expectation that the next time the pod is tried for scheduling it
 		// will fit due to the preemption. It is also possible that a different pod will schedule
 		// into the resources that were preempted, but this is harmless.
+		var needBorrow bool
+		var nodeName string
 		if fitError, ok := err.(*core.FitError); ok {
 			if !util.PodPriorityEnabled() || sched.config.DisablePreemption {
 				klog.V(3).Infof("Pod priority feature is not enabled or preemption is disabled by scheduler configuration." +
 					" No preemption is performed.")
 			} else {
-				preemptionStartTime := time.Now()
-				sched.preempt(poolName, pod, fitError)
-				metrics.PreemptionAttempts.Inc()
-				metrics.SchedulingAlgorithmPremptionEvaluationDuration.Observe(metrics.SinceInSeconds(preemptionStartTime))
-				metrics.DeprecatedSchedulingAlgorithmPremptionEvaluationDuration.Observe(metrics.SinceInMicroseconds(preemptionStartTime))
-				metrics.SchedulingLatency.WithLabelValues(metrics.PreemptionEvaluation).Observe(metrics.SinceInSeconds(preemptionStartTime))
-				metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PreemptionEvaluation).Observe(metrics.SinceInSeconds(preemptionStartTime))
+				selfPoolName := sched.config.PoolQueue.GetPoolQueueNameIfNotPresent(pod)
+				// only self pool will perform preemption
+				if selfPoolName == poolName {
+					if p, err := sched.config.SchedulerCache.GetPool(poolName); err != nil {
+						klog.Errorf("Error get pool failed: %v", err)
+					} else {
+						if p.DisablePreemption() {
+							klog.V(3).Infof("Pool %v preemption disabled. No preemption is performed", poolName)
+						} else {
+							preemptionStartTime := time.Now()
+							nodeName, err, needBorrow = sched.preempt(poolName, pod, fitError)
+							//needBorrow = b
+							if nodeName != "" {
+								klog.V(4).Infof("Preempt for %v/%v in pool %v at node %v succeed", pod.Namespace, pod.Name, poolName, nodeName)
+							} else {
+								klog.Errorf("Preempt for %v/%v in pool %v not feasible or failed: %v", pod.Namespace, pod.Name, poolName, err)
+							}
+							metrics.PreemptionAttempts.Inc()
+							metrics.SchedulingAlgorithmPremptionEvaluationDuration.Observe(metrics.SinceInSeconds(preemptionStartTime))
+							metrics.DeprecatedSchedulingAlgorithmPremptionEvaluationDuration.Observe(metrics.SinceInMicroseconds(preemptionStartTime))
+							metrics.SchedulingLatency.WithLabelValues(metrics.PreemptionEvaluation).Observe(metrics.SinceInSeconds(preemptionStartTime))
+							metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PreemptionEvaluation).Observe(metrics.SinceInSeconds(preemptionStartTime))
+						}
+					}
+				}
 			}
 			// Pod did not fit anywhere, so it is counted as a failure. If preemption
 			// succeeds, the pod should get counted as a success the next time we try to
@@ -501,6 +521,8 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 			klog.Errorf("error selecting node for pod: %v", err)
 			metrics.PodScheduleErrors.Inc()
 		}
+		// call Error() to borrow or reschedule pod
+		sched.config.Error(poolName, pod, err, needBorrow)
 		return err
 	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))

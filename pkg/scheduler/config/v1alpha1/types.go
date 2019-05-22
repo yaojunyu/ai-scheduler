@@ -23,7 +23,7 @@ import (
 
 const (
 	// SchedulerDefaultLockObjectNamespace defines default scheduler lock object namespace ("kube-system")
-	SchedulerDefaultLockObjectNamespace string = metav1.NamespaceSystem
+	SchedulerDefaultLockObjectNamespace = metav1.NamespaceSystem
 
 	// SchedulerDefaultLockObjectName defines default scheduler lock object name ("kube-scheduler")
 	SchedulerDefaultLockObjectName = "ai-scheduler"
