@@ -261,7 +261,7 @@ func TestDefaultErrorFunc(t *testing.T) {
 	podBackoff := util.CreatePodBackoff(1*time.Millisecond, 1*time.Second)
 	errFunc := MakeDefaultErrorFunc(client, podBackoff, poolQueue, schedulerCache, stopCh)
 
-	errFunc("", testPod, nil)
+	errFunc("", testPod, nil, false)
 
 	for {
 		// This is a terrible way to do this but I plan on replacing this
