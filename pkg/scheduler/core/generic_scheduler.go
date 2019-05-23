@@ -314,7 +314,7 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	if err != nil {
 		return nil, nil, nil, err, false
 	}
-	nodeToVictims, err := selectNodesForPreemption(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap, potentialNodes, g.predicates,
+	nodeToVictims, err := selectNodesForPreemption(poolName, pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap, potentialNodes, g.predicates,
 		g.predicateMetaProducer, g.schedulingQueue, pdbs)
 	if err != nil {
 		return nil, nil, nil, err, false
@@ -915,7 +915,8 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 
 // selectNodesForPreemption finds all the nodes with possible victims for
 // preemption in parallel.
-func selectNodesForPreemption(pod *v1.Pod,
+func selectNodesForPreemption(poolName string,
+	pod *v1.Pod,
 	nodeNameToInfo map[string]*schedulerinfo.NodeInfo,
 	potentialNodes []*v1.Node,
 	fitPredicates map[string]predicates.FitPredicate,
@@ -934,7 +935,7 @@ func selectNodesForPreemption(pod *v1.Pod,
 		if meta != nil {
 			metaCopy = meta.ShallowCopy()
 		}
-		pods, numPDBViolations, fits := selectVictimsOnNode(pod, metaCopy, nodeNameToInfo[nodeName], fitPredicates, queue, pdbs)
+		pods, numPDBViolations, fits := selectVictimsOnNode(poolName, pod, metaCopy, nodeNameToInfo[nodeName], fitPredicates, queue, pdbs)
 		if fits {
 			resultLock.Lock()
 			victims := schedulerapi.Victims{
@@ -1004,6 +1005,7 @@ func filterPodsWithPDBViolation(pods []interface{}, pdbs []*policy.PodDisruption
 // due to pod affinity, node affinity, or node anti-affinity reasons. None of
 // these predicates can be satisfied by removing more pods from the node.
 func selectVictimsOnNode(
+	poolName string,
 	pod *v1.Pod,
 	meta predicates.PredicateMetadata,
 	nodeInfo *schedulerinfo.NodeInfo,
@@ -1014,7 +1016,7 @@ func selectVictimsOnNode(
 	if nodeInfo == nil {
 		return nil, 0, false
 	}
-	potentialVictims := util.SortableList{CompFunc: util.HigherPriorityPod}
+	potentialVictims := util.SortableList{CompFunc: util.SelfPoolHasHigherPriorityFunc(poolName)}
 	nodeInfoCopy := nodeInfo.Clone()
 
 	removePod := func(rp *v1.Pod) {
@@ -1033,8 +1035,12 @@ func selectVictimsOnNode(
 	// check if the given pod can be scheduled.
 	podPriority := util.GetPodPriority(pod)
 	for _, p := range nodeInfoCopy.Pods() {
-		// ADD only evict job pod
-		if util.GetPodPriority(p) < podPriority && util.IsControlledByJob(p) {
+		// pod in other pool has lower priority which is potential victim
+		// pod in self pool which has lower priority will be selected
+		podPoolName := queue.GetPoolQueueNameIfNotPresent(p)
+		if util.ResponsibleForPod(p, "ai-scheduler") && // FIXME NOT HARD CODE, get schedulerName from options
+			(poolName != podPoolName || (poolName == podPoolName && util.GetPodPriority(p) < podPriority)) {
+			klog.V(4).Infof("pod %v/%v is a potential victim", p.Namespace, p.Name)
 			potentialVictims.Items = append(potentialVictims.Items, p)
 			removePod(p)
 		}

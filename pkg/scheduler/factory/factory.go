@@ -708,30 +708,27 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 				pod, err := client.CoreV1().Pods(podID.Namespace).Get(podID.Name, metav1.GetOptions{})
 				if err == nil {
 					if len(pod.Spec.NodeName) == 0 {
-						var bestPoolName string
-						// if preempt succeed skip borrowing
+						borrowPoolName := poolName
 						if needBorrow {
-							bestPoolName = schedulerCache.BorrowPool(poolName, pod)
-						} else {
-							bestPoolName = poolName
+							borrowPoolName = schedulerCache.BorrowPool(poolName, pod)
 						}
-						if bestPoolName == poolName {
+						if borrowPoolName == poolName {
 							// if is the same pool add pod to unscheduleable queue
 							if err := podQueue.AddUnschedulableIfNotPresent(pod, podSchedulingCycle); err == nil {
-								klog.V(4).Infof("Add pod %v/%v to unschedulable queue of pool queue %v succeed", pod.Namespace, pod.Name, bestPoolName)
+								klog.V(4).Infof("Add pod %v/%v to unschedulable queue of pool queue %v succeed", pod.Namespace, pod.Name, borrowPoolName)
 							} else {
-								klog.V(4).Infof("Add pod %v/%v to unschedulable queue of pool queue %v failed: %v", pod.Namespace, pod.Name, bestPoolName, err)
+								klog.V(4).Infof("Add pod %v/%v to unschedulable queue of pool queue %v failed: %v", pod.Namespace, pod.Name, borrowPoolName, err)
 							}
 						} else {
 							// if is other pool add pod to active queue
-							q, err := poolQueue.GetQueue(bestPoolName)
+							q, err := poolQueue.GetQueue(borrowPoolName)
 							if err != nil {
 								klog.Errorf("Get queue failed: %v", err)
 							} else {
 								if err := q.AddIfNotPresent(pod); err == nil {
-									klog.V(4).Infof("Add pod %v/%v to active queue of pool queue %v succeed", pod.Namespace, pod.Name, bestPoolName)
+									klog.V(4).Infof("Add pod %v/%v to active queue of pool queue %v succeed", pod.Namespace, pod.Name, borrowPoolName)
 								} else {
-									klog.V(4).Infof("Add pod %v/%v to active queue of pool queue %v failed: %v", pod.Namespace, pod.Name, bestPoolName, err)
+									klog.V(4).Infof("Add pod %v/%v to active queue of pool queue %v failed: %v", pod.Namespace, pod.Name, borrowPoolName, err)
 								}
 							}
 						}

@@ -268,8 +268,8 @@ func (sched *Scheduler) Config() *factory.Config {
 // recordFailedSchedulingEvent records an event for the pod that indicates the
 // pod has failed to schedule.
 // NOTE: This function modifies "pod". "pod" should be copied before being passed.
-func (sched *Scheduler) recordSchedulingFailure(poolName string, pod *v1.Pod, err error, reason string, message string) {
-	//sched.config.Error(poolName, pod, err)
+func (sched *Scheduler) recordSchedulingFailure(poolName string, pod *v1.Pod, err error, reason string, message string, needBorrow bool) {
+	sched.config.Error(poolName, pod, err, needBorrow)
 	sched.config.Recorder.Event(pod, v1.EventTypeWarning, "FailedScheduling", message)
 	sched.config.PodConditionUpdater.Update(pod, &v1.PodCondition{
 		Type:    v1.PodScheduled,
@@ -284,8 +284,8 @@ func (sched *Scheduler) recordSchedulingFailure(poolName string, pod *v1.Pod, er
 func (sched *Scheduler) schedule(poolName string, pod *v1.Pod) (core.ScheduleResult, error) {
 	result, err := sched.config.Algorithm.Schedule(poolName, pod, sched.config.NodeLister)
 	if err != nil {
-		pod = pod.DeepCopy()
-		sched.recordSchedulingFailure(poolName, pod, err, v1.PodReasonUnschedulable, err.Error())
+		//pod = pod.DeepCopy()
+		//sched.recordSchedulingFailure(poolName, pod, err, v1.PodReasonUnschedulable, err.Error())
 		return core.ScheduleResult{}, err
 	}
 	return result, err
@@ -361,7 +361,7 @@ func (sched *Scheduler) assumeVolumes(poolName string, assumed *v1.Pod, host str
 	allBound, err = sched.config.VolumeBinder.Binder.AssumePodVolumes(assumed, host)
 	if err != nil {
 		sched.recordSchedulingFailure(poolName, assumed, err, SchedulerError,
-			fmt.Sprintf("AssumePodVolumes failed: %v", err))
+			fmt.Sprintf("AssumePodVolumes failed: %v", err), false)
 	}
 	return
 }
@@ -382,7 +382,7 @@ func (sched *Scheduler) bindVolumes(poolName string, assumed *v1.Pod) error {
 			klog.Errorf("scheduler cache ForgetPod failed: %v", forgetErr)
 		}
 
-		sched.recordSchedulingFailure(poolName, assumed, err, "VolumeBindingFailed", err.Error())
+		sched.recordSchedulingFailure(poolName, assumed, err, "VolumeBindingFailed", err.Error(), false)
 		return err
 	}
 
@@ -408,7 +408,7 @@ func (sched *Scheduler) assume(poolName string, assumed *v1.Pod, host string) er
 		// to a node and if so will not add it back to the unscheduled pods queue
 		// (otherwise this would cause an infinite loop).
 		sched.recordSchedulingFailure(poolName, assumed, err, SchedulerError,
-			fmt.Sprintf("AssumePod failed: %v", err))
+			fmt.Sprintf("AssumePod failed: %v", err), false)
 		return err
 	}
 	// if "assumed" is a nominated pod, we should remove it from internal cache
@@ -439,7 +439,7 @@ func (sched *Scheduler) bind(poolName string, assumed *v1.Pod, b *v1.Binding) er
 			klog.Errorf("scheduler cache ForgetPod failed: %v", err)
 		}
 		sched.recordSchedulingFailure(poolName, assumed, err, SchedulerError,
-			fmt.Sprintf("Binding rejected: %v", err))
+			fmt.Sprintf("Binding rejected: %v", err), false)
 		return err
 	}
 
@@ -480,7 +480,7 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 		// preempt, with the expectation that the next time the pod is tried for scheduling it
 		// will fit due to the preemption. It is also possible that a different pod will schedule
 		// into the resources that were preempted, but this is harmless.
-		var needBorrow bool
+		needBorrow := true
 		var nodeName string
 		if fitError, ok := err.(*core.FitError); ok {
 			if !util.PodPriorityEnabled() || sched.config.DisablePreemption {
@@ -490,19 +490,18 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 				selfPoolName := sched.config.PoolQueue.GetPoolQueueNameIfNotPresent(pod)
 				// only self pool will perform preemption
 				if selfPoolName == poolName {
-					if p, err := sched.config.SchedulerCache.GetPool(poolName); err != nil {
-						klog.Errorf("Error get pool failed: %v", err)
+					if p, e := sched.config.SchedulerCache.GetPool(poolName); e != nil {
+						klog.Errorf("Error get pool failed: %v", e)
 					} else {
 						if p.DisablePreemption() {
 							klog.V(3).Infof("Pool %v preemption disabled. No preemption is performed", poolName)
 						} else {
 							preemptionStartTime := time.Now()
-							nodeName, err, needBorrow = sched.preempt(poolName, pod, fitError)
-							//needBorrow = b
+							nodeName, _, needBorrow = sched.preempt(poolName, pod, fitError)
 							if nodeName != "" {
 								klog.V(4).Infof("Preempt for %v/%v in pool %v at node %v succeed", pod.Namespace, pod.Name, poolName, nodeName)
 							} else {
-								klog.Errorf("Preempt for %v/%v in pool %v not feasible or failed: %v", pod.Namespace, pod.Name, poolName, err)
+								klog.V(4).Infof("Preempt for %v/%v in pool %v not feasible or failed: %v", pod.Namespace, pod.Name, poolName, e)
 							}
 							metrics.PreemptionAttempts.Inc()
 							metrics.SchedulingAlgorithmPremptionEvaluationDuration.Observe(metrics.SinceInSeconds(preemptionStartTime))
@@ -522,7 +521,8 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 			metrics.PodScheduleErrors.Inc()
 		}
 		// call Error() to borrow or reschedule pod
-		sched.config.Error(poolName, pod, err, needBorrow)
+		pod = pod.DeepCopy()
+		sched.recordSchedulingFailure(poolName, pod, err, v1.PodReasonUnschedulable, err.Error(), needBorrow)
 		return err
 	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
@@ -550,7 +550,7 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 		if err := pl.Reserve(plugins, assumedPod, scheduleResult.SuggestedHost); err != nil {
 			klog.Errorf("error while running %v reserve plugin for pod %v: %v", pl.Name(), assumedPod.Name, err)
 			sched.recordSchedulingFailure(poolName, assumedPod, err, SchedulerError,
-				fmt.Sprintf("reserve plugin %v failed", pl.Name()))
+				fmt.Sprintf("reserve plugin %v failed", pl.Name()), false)
 			metrics.PodScheduleErrors.Inc()
 			return err
 		}
@@ -593,7 +593,7 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 				} else {
 					reason = SchedulerError
 				}
-				sched.recordSchedulingFailure(poolName, assumedPod, err, reason, err.Error())
+				sched.recordSchedulingFailure(poolName, assumedPod, err, reason, err.Error(), false)
 				return
 			}
 		}

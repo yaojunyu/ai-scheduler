@@ -17,11 +17,11 @@ limitations under the License.
 package util
 
 import (
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"sort"
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
 	"k8s.io/kubernetes/pkg/features"
@@ -100,6 +100,23 @@ func HigherPriorityPod(pod1, pod2 interface{}) bool {
 	return GetPodPriority(pod1.(*v1.Pod)) > GetPodPriority(pod2.(*v1.Pod))
 }
 
+// SelfPoolHasHigherPriorityFunc
+func SelfPoolHasHigherPriorityFunc(poolName string) LessFunc {
+	selfPoolHasHigherPriority := func(pod1, pod2 interface{}) bool {
+		p1 := pod1.(*v1.Pod)
+		p2 := pod2.(*v1.Pod)
+		pool1 := info.GetPodAnnotationsPoolName(p1)
+		pool2 := info.GetPodAnnotationsPoolName(p2)
+		if pool1 == poolName && pool2 != poolName {
+			return true
+		} else if pool1 != poolName && pool2 == poolName {
+			return false
+		}
+		return GetPodPriority(p1) > GetPodPriority(p2)
+	}
+	return selfPoolHasHigherPriority
+}
+
 // GetPoolResourceQuota return quota of the given pool and resource name.
 func GetPoolResourceQuota(pool *v1alpha1.Pool, name v1.ResourceName) int64 {
 	if pool == nil && name == "" {
@@ -116,10 +133,7 @@ func GetPoolResourceQuota(pool *v1alpha1.Pool, name v1.ResourceName) int64 {
 	return 0
 }
 
-// IsControledByJob
-func IsControlledByJob(pod *v1.Pod) bool {
-	if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
-		return controllerRef.Kind == "Job"
-	}
-	return false
+// responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.
+func ResponsibleForPod(pod *v1.Pod, schedulerName string) bool {
+	return schedulerName == pod.Spec.SchedulerName
 }
