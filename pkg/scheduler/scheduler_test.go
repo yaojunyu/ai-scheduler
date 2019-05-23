@@ -160,8 +160,8 @@ func (es mockScheduler) Prioritizers() []priorities.PriorityConfig {
 	return nil
 }
 
-func (es mockScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error) {
-	return nil, nil, nil, nil
+func (es mockScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, []*v1.Pod, error, bool) {
+	return nil, nil, nil, nil, false
 }
 
 func TestSchedulerCreation(t *testing.T) {
@@ -290,7 +290,7 @@ func TestScheduler(t *testing.T) {
 					}}
 				},
 				PodConditionUpdater: fakePodConditionUpdater{},
-				Error: func(poolName string, p *v1.Pod, err error) {
+				Error: func(poolName string, p *v1.Pod, err error, needBorrow bool) {
 					gotPod = p
 					gotError = err
 				},
@@ -300,6 +300,7 @@ func TestScheduler(t *testing.T) {
 				PluginSet:    &EmptyPluginSet{},
 				Recorder:     eventBroadcaster.NewRecorder(legacyscheme.Scheme, v1.EventSource{Component: "scheduler"}),
 				VolumeBinder: volumebinder.NewFakeVolumeBinder(&persistentvolume.FakeVolumeBinderConfig{AllBound: true}),
+				PoolQueue:    internalqueue.NewPoolQueue(stop),
 			})
 			called := make(chan struct{})
 			events := eventBroadcaster.StartEventWatcher(func(e *v1.Event) {
@@ -668,13 +669,14 @@ func setupTestScheduler(queuedPodStore *clientcache.FIFO, scache schedulerintern
 		NextPod: func(poolName string) (*v1.Pod, error) {
 			return clientcache.Pop(queuedPodStore).(*v1.Pod), nil
 		},
-		Error: func(poolName string, p *v1.Pod, err error) {
+		Error: func(poolName string, p *v1.Pod, err error, needBorrow bool) {
 			errChan <- err
 		},
 		Recorder:            &record.FakeRecorder{},
 		PodConditionUpdater: fakePodConditionUpdater{},
 		PodPreemptor:        fakePodPreemptor{},
 		PluginSet:           &EmptyPluginSet{},
+		PoolQueue:           internalqueue.NewPoolQueue(nil),
 		VolumeBinder:        volumebinder.NewFakeVolumeBinder(&persistentvolume.FakeVolumeBinderConfig{AllBound: true}),
 	}
 
@@ -724,7 +726,7 @@ func setupTestSchedulerLongBindingWithRetry(queuedPodStore *clientcache.FIFO, sc
 		NextPod: func(poolName string) (*v1.Pod, error) {
 			return clientcache.Pop(queuedPodStore).(*v1.Pod), nil
 		},
-		Error: func(poolName string, p *v1.Pod, err error) {
+		Error: func(poolName string, p *v1.Pod, err error, needBorrow bool) {
 			queuedPodStore.AddIfNotPresent(p)
 		},
 		Recorder:            &record.FakeRecorder{},
@@ -732,6 +734,7 @@ func setupTestSchedulerLongBindingWithRetry(queuedPodStore *clientcache.FIFO, sc
 		PodPreemptor:        fakePodPreemptor{},
 		StopEverything:      stop,
 		PluginSet:           &EmptyPluginSet{},
+		PoolQueue:           internalqueue.NewPoolQueue(nil),
 		VolumeBinder:        volumebinder.NewFakeVolumeBinder(&persistentvolume.FakeVolumeBinderConfig{AllBound: true}),
 	})
 
