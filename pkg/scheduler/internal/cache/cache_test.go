@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1080,7 +1081,7 @@ func TestNodeOperators(t *testing.T) {
 
 		// Case 2: dump cached nodes successfully.
 		//cachedNodes := schedulerinfo.NewNodeInfoSnapshot()
-		cache.UpdateNodeInfoSnapshot(""/*&cachedNodes*/)
+		cache.UpdateNodeInfoSnapshot("" /*&cachedNodes*/)
 		cachedNodes := cache.NodeInfoSnapshot("")
 		newNode, found := cachedNodes.NodeInfoMap[node.Name]
 		if !found || len(cachedNodes.NodeInfoMap) != 1 {
@@ -1542,8 +1543,8 @@ func TestPoolOperators(t *testing.T) {
 	}
 
 	tests := struct {
-		pools []*v1alpha1.Pool
-		nodes []*v1.Node
+		pools   []*v1alpha1.Pool
+		nodes   []*v1.Node
 		updates []*v1.Node
 	}{
 		pools: []*v1alpha1.Pool{
@@ -1642,5 +1643,320 @@ func TestPoolOperators(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cache.pools[poolName2].Allocatable(), res2) {
 		t.Error("pool resource not right after update nodes")
+	}
+}
+
+func TestSchedulerCacheBorrowPool(t *testing.T) {
+	var largeContainers = []v1.Container{
+		{
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					"cpu": resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMilliCPURequest, 10) + "m"),
+					"memory": resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
+				},
+			},
+		},
+	}
+	tests := []struct {
+		name     string
+		pod      v1.Pod
+		nodes    []*v1.Node
+		pools    []*v1alpha1.Pool
+		poolName string
+		expected string
+	}{
+		{
+			name: "Disabled Borrow pool get self pool name",
+			pod: v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-pod",
+					Annotations: map[string]string{v1alpha1.GroupNameAnnotationKey: "pool1"},
+				},
+				Spec: v1.PodSpec{
+					Containers: largeContainers,
+				},
+			},
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node1", ResourceVersion: "10",
+						Labels: map[string]string{
+							"pool1": "true",
+						},
+					},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(10, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(20*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(30*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+			},
+			pools: []*v1alpha1.Pool{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pool1",
+					},
+					Spec: v1alpha1.PoolSpec{
+						DisableBorrowing: true,
+						NodeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pool1": "true",
+							},
+						},
+					},
+				},
+			},
+			poolName: "pool1",
+			expected: "pool1",
+		},
+		{
+			name: "Borrow pool has max idle resources",
+			pod: v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-pod",
+					Annotations: map[string]string{v1alpha1.GroupNameAnnotationKey: ""},
+				},
+				Spec: v1.PodSpec{
+					Containers: largeContainers,
+				},
+			},
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node1", ResourceVersion: "10",
+						Labels: map[string]string{
+							"pool1": "true",
+						},
+					},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node2", ResourceVersion: "10",
+						Labels: map[string]string{
+							"pool2": "true",
+						},
+					},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+			},
+			pools: []*v1alpha1.Pool{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pool1",
+					},
+					Spec: v1alpha1.PoolSpec{
+						DisableBorrowing: true,
+						NodeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pool1": "true",
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pool2",
+					},
+					Spec: v1alpha1.PoolSpec{
+						DisableBorrowing: true,
+						NodeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pool2": "true",
+							},
+						},
+					},
+				},
+			},
+			poolName: "",
+			expected: "pool2",
+		},
+		{
+			name: "Pod in other pool exclude borrowing none-current pool",
+			pod: v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-pod",
+					Annotations: map[string]string{v1alpha1.GroupNameAnnotationKey: "pool1"},
+				},
+				Spec: v1.PodSpec{
+					Containers: largeContainers,
+				},
+			},
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node1", ResourceVersion: "10",
+						Labels: map[string]string{
+							"pool1": "true",
+						},
+					},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node2", ResourceVersion: "10",
+						Labels: map[string]string{
+							"pool2": "true",
+						},
+					},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+			},
+			pools: []*v1alpha1.Pool{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pool1",
+					},
+					Spec: v1alpha1.PoolSpec{
+						DisableBorrowing: true,
+						NodeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pool1": "true",
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pool2",
+					},
+					Spec: v1alpha1.PoolSpec{
+						DisableBorrowing: true,
+						NodeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pool2": "true",
+							},
+						},
+					},
+				},
+			},
+			poolName: "pool2",
+			expected: "pool1",
+		},
+		{
+			name: "Pod in other pool first borrow self pool",
+			pod: v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-pod",
+					Annotations: map[string]string{v1alpha1.GroupNameAnnotationKey: "pool1"},
+				},
+				Spec: v1.PodSpec{
+					Containers: largeContainers,
+				},
+			},
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node1", ResourceVersion: "10",
+						Labels: map[string]string{
+							"pool1": "true",
+						},
+					},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node2", ResourceVersion: "10",
+						Labels: map[string]string{
+							"pool2": "true",
+						},
+					},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+			},
+			pools: []*v1alpha1.Pool{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pool1",
+					},
+					Spec: v1alpha1.PoolSpec{
+						DisableBorrowing: true,
+						NodeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pool1": "true",
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pool2",
+					},
+					Spec: v1alpha1.PoolSpec{
+						DisableBorrowing: true,
+						NodeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pool2": "true",
+							},
+						},
+					},
+				},
+			},
+			poolName: "",
+			expected: "pool1",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cache := newSchedulerCache(time.Second, time.Second, nil)
+			for _, node := range test.nodes {
+				cache.AddNode(node)
+			}
+			for _, pool := range test.pools {
+				cache.AddPool(pool)
+			}
+			gotPool := cache.BorrowPool(test.poolName, &test.pod)
+			if gotPool != test.expected {
+				t.Errorf("unexcepted borrow pool, excepted: %v, got: %v", test.expected, gotPool)
+			}
+		})
 	}
 }
