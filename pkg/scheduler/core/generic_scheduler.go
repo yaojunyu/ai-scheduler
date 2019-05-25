@@ -328,7 +328,7 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 		return nil, nil, nil, err, false
 	}
 
-	candidateNode := pickOneNodeForPreemption(nodeToVictims)
+	candidateNode := pickOneNodeForPreemption(nodeToVictims, poolName, g.schedulingQueue)
 	if candidateNode == nil {
 		return nil, nil, nil, nil, true
 	}
@@ -808,7 +808,7 @@ func EqualPriorityMap(_ *v1.Pod, _ interface{}, nodeInfo *schedulerinfo.NodeInfo
 // 5. If there are still ties, the first such node is picked (sort of randomly).
 // The 'minNodes1' and 'minNodes2' are being reused here to save the memory
 // allocation and garbage collection time.
-func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims) *v1.Node {
+func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims, poolName string, poolQueue internalqueue.SchedulingPoolQueue) *v1.Node {
 	if len(nodesToVictims) == 0 {
 		return nil
 	}
@@ -848,6 +848,10 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 		victims := nodesToVictims[node]
 		// highestPodPriority is the highest priority among the victims on this node.
 		highestPodPriority := util.GetPodPriority(victims.Pods[0])
+		// if victim is borrowing pod, has the lowest priority
+		if poolQueue.GetPoolQueueNameIfNotPresent(victims.Pods[0]) != poolName {
+			highestPodPriority = int32(math.MinInt32)
+		}
 		if highestPodPriority < minHighestPriority {
 			minHighestPriority = highestPodPriority
 			lenNodes2 = 0
@@ -873,7 +877,12 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 			// needed so that a node with a few pods with negative priority is not
 			// picked over a node with a smaller number of pods with the same negative
 			// priority (and similar scenarios).
-			sumPriorities += int64(util.GetPodPriority(pod)) + int64(math.MaxInt32+1)
+			podPriority := util.GetPodPriority(pod)
+			// if victim is borrowing pod, set the lowest priority
+			if poolQueue.GetPoolQueueNameIfNotPresent(pod) != poolName {
+				podPriority = int32(math.MinInt32)
+			}
+			sumPriorities += int64(podPriority) + int64(math.MaxInt32+1)
 		}
 		if sumPriorities < minSumPriorities {
 			minSumPriorities = sumPriorities
