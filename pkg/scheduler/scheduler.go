@@ -510,6 +510,10 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 							metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PreemptionEvaluation).Observe(metrics.SinceInSeconds(preemptionStartTime))
 						}
 					}
+
+					// when come many pods from self pool, to avoid pod from other pool has no chance to schedule,
+					// move all pods from other pools to their self pool queues
+					sched.config.PoolQueue.MoveAllBorrowingPodsToSelfQueue(poolName)
 				}
 			}
 			// Pod did not fit anywhere, so it is counted as a failure. If preemption
