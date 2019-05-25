@@ -18,7 +18,7 @@ resources:
 securePort: 20888
 healthzPort: 20999
 
-disablePreemption: true
+disablePreemption: false
 
 leaderElect: true
 leaseDuration: "15s"
