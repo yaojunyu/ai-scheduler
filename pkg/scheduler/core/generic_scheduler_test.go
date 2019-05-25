@@ -975,6 +975,7 @@ func TestSelectNodesForPreemption(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			poolQueue := internalqueue.NewPoolQueue(nil)
 			nodes := []*v1.Node{}
 			for _, n := range test.nodes {
 				node := makeNode(n, 1000*5, priorityutil.DefaultMemoryRequest*5)
@@ -990,7 +991,7 @@ func TestSelectNodesForPreemption(t *testing.T) {
 			newnode := makeNode("newnode", 1000*5, priorityutil.DefaultMemoryRequest*5)
 			newnode.ObjectMeta.Labels = map[string]string{"hostname": "newnode"}
 			nodes = append(nodes, newnode)
-			nodeToPods, err := selectNodesForPreemption("", test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata, nil, nil)
+			nodeToPods, err := selectNodesForPreemption("", test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata, poolQueue, nil)
 			if err != nil {
 				t.Error(err)
 			}
@@ -1146,13 +1147,14 @@ func TestPickOneNodeForPreemption(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			poolQueue := internalqueue.NewPoolQueue(nil)
 			nodes := []*v1.Node{}
 			for _, n := range test.nodes {
 				nodes = append(nodes, makeNode(n, priorityutil.DefaultMilliCPURequest*5, priorityutil.DefaultMemoryRequest*5))
 			}
 			nodeNameToInfo := schedulerinfo.CreateNodeNameToInfoMap(test.pods, nodes)
-			candidateNodes, _ := selectNodesForPreemption("", test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata, nil, nil)
-			node := pickOneNodeForPreemption(candidateNodes)
+			candidateNodes, _ := selectNodesForPreemption("", test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata, poolQueue, nil)
+			node := pickOneNodeForPreemption(candidateNodes, "", poolQueue)
 			found := false
 			for _, nodeName := range test.expected {
 				if node.Name == nodeName {
