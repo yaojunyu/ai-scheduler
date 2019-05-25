@@ -498,9 +498,7 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 						} else {
 							preemptionStartTime := time.Now()
 							nodeName, _, needBorrow = sched.preempt(poolName, pod, fitError)
-							if nodeName != "" {
-								klog.V(4).Infof("Preempt for %v/%v in pool %v at node %v succeed", pod.Namespace, pod.Name, poolName, nodeName)
-							} else {
+							if nodeName == "" {
 								klog.V(4).Infof("Preempt for %v/%v in pool %v not feasible or failed: %v", pod.Namespace, pod.Name, poolName, e)
 							}
 							metrics.PreemptionAttempts.Inc()

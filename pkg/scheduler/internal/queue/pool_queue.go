@@ -156,13 +156,6 @@ func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 		}
 	}
 	return nil
-	//poolName := info.GetPodAnnotationsPoolName(pod)
-	//q, n, err := pq.getPriorityQueue(poolName)
-	//if err != nil {
-	//	return err
-	//}
-	//klog.V(4).Infof("Delete pod %v/%v from pool queue '%v'", pod.Namespace, pod.Name, n)
-	//return q.Delete(pod)
 }
 
 // Update
@@ -180,14 +173,6 @@ func (pq *PoolQueue) Update(oldPod, newPod *v1.Pod) error {
 		}
 	}
 	return nil
-	//poolName := info.GetPodAnnotationsPoolName(oldPod)
-	//q, n, err := pq.getPriorityQueue(poolName)
-	//if err != nil {
-	//	return err
-	//}
-	//klog.V(4).Infof("Update pod from %v/%v to %v/%v in pool queue '%v'",
-	//	oldPod.Namespace, oldPod.Name, newPod.Namespace, newPod.Name, n)
-	//return q.Update(oldPod, newPod)
 }
 
 // NumQueues return the len of queues
