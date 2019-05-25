@@ -1020,6 +1020,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 					klog.V(4).Infof("Skip node %v/%v as pod not fit resources: %v, reasons: %v", pi.Name(), ni.Info().Node().Name, err, failedPredicates)
 					continue
 				}
+				klog.V(4).Infof("Got node %v/%v pod fit resources", pi.Name(), ni.Info().Node().Name)
 				return pi.Name()
 			}
 		}
