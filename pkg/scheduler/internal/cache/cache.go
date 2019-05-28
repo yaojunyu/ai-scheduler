@@ -678,7 +678,7 @@ func (cache *schedulerCache) matchPoolForNode(node *v1.Node) *schedulerinfo.Pool
 		for _, p := range matches {
 			p.RemoveNode(node)
 		}
-		if _, exists := df.ContainsNode(node.Name); !exists {
+		if _, exists := df.ContainsNode(node.Name); len(matches) > 0 && !exists {
 			df.AddNode(node)
 		}
 		return df
