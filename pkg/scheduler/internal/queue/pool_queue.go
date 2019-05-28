@@ -30,6 +30,7 @@ type SchedulingPoolQueue interface {
 	NominatedPodsForNode(nodeName string) []*v1.Pod
 
 	GetPoolQueueNameIfNotPresent(pod *v1.Pod) string
+	MoveAllBorrowingPodsToSelfQueue(poolName string)
 	Close()
 }
 
@@ -140,31 +141,38 @@ func (pq *PoolQueue) AddIfNotPresent(pod *v1.Pod) error {
 	return q.AddIfNotPresent(pod)
 }
 
-// Delete deletes pod
+// Delete as pod
 func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodAnnotationsPoolName(pod)
-	q, n, err := pq.getPriorityQueue(poolName)
-	if err != nil {
-		return err
+
+	// search pod in which queue then delete it
+	for n, q := range pq.queues {
+		for _, p := range q.PendingPods() {
+			if p.UID == pod.UID {
+				klog.V(4).Infof("Delete pod %v/%v from pool queue '%v'", pod.Namespace, pod.Name, n)
+				return q.Delete(pod)
+			}
+		}
 	}
-	klog.V(4).Infof("Delete pod %v/%v from pool queue '%v'", pod.Namespace, pod.Name, n)
-	return q.Delete(pod)
+	return nil
 }
 
 // Update
 func (pq *PoolQueue) Update(oldPod, newPod *v1.Pod) error {
 	pq.lock.Lock()
 	defer pq.lock.Unlock()
-	poolName := info.GetPodAnnotationsPoolName(oldPod)
-	q, n, err := pq.getPriorityQueue(poolName)
-	if err != nil {
-		return err
+
+	for n, q := range pq.queues {
+		for _, p := range q.PendingPods() {
+			if p.UID == newPod.UID {
+				klog.V(4).Infof("Update pod from %v/%v to %v/%v in pool queue '%v'",
+					oldPod.Namespace, oldPod.Name, newPod.Namespace, newPod.Name, n)
+				return q.Update(oldPod, newPod)
+			}
+		}
 	}
-	klog.V(4).Infof("Update pod from %v/%v to %v/%v in pool queue '%v'",
-		oldPod.Namespace, oldPod.Name, newPod.Namespace, newPod.Name, n)
-	return q.Update(oldPod, newPod)
+	return nil
 }
 
 // NumQueues return the len of queues
@@ -323,4 +331,30 @@ func (pq *PoolQueue) matchPoolQueueNameForPod(pod *v1.Pod) string {
 		return poolName
 	}
 	return info.DefaultPoolName
+}
+
+// MoveAllBorrowingPodsToSelfQueue reject all pods that are borrowing pool
+func (pq *PoolQueue) MoveAllBorrowingPodsToSelfQueue(poolName string) {
+	pq.lock.Lock()
+	defer pq.lock.Unlock()
+	queue, ok := pq.queues[poolName]
+	if !ok {
+		return
+	}
+	for _, pod := range queue.PendingPods() {
+		selfPoolName := pq.matchPoolQueueNameForPod(pod)
+		// TODO add borrowingPods field to PriorityQueue
+		if selfPoolName != poolName {
+			queue.Delete(pod)
+			selfQ, ok := pq.queues[selfPoolName]
+			if !ok {
+				selfQ = pq.queues[info.DefaultPoolName]
+			}
+			if err := selfQ.AddIfNotPresent(pod); err != nil {
+				klog.Errorf("move pod %v/%v from queue %v to self queue %v failed: %v", pod.Namespace, pod.Name, poolName, selfPoolName, err)
+			} else {
+				klog.V(4).Infof("move pod %v/%v from queue %v to self queue %v succeed", pod.Namespace, pod.Name, poolName, selfPoolName)
+			}
+		}
+	}
 }

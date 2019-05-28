@@ -303,7 +303,7 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 
 	node, victims, nominatedPodsToClear, err, needBorrow := sched.config.Algorithm.Preempt(poolName, preemptor, sched.config.NodeLister, scheduleErr)
 	if err != nil {
-		klog.Errorf("Error preempting victims to make room for %v/%v.", preemptor.Namespace, preemptor.Name)
+		klog.Warningf("Preempting victims to make room for %v/%v failed: %v", preemptor.Namespace, preemptor.Name, err)
 		return "", err, needBorrow
 	}
 	var nodeName = ""
@@ -498,9 +498,7 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 						} else {
 							preemptionStartTime := time.Now()
 							nodeName, _, needBorrow = sched.preempt(poolName, pod, fitError)
-							if nodeName != "" {
-								klog.V(4).Infof("Preempt for %v/%v in pool %v at node %v succeed", pod.Namespace, pod.Name, poolName, nodeName)
-							} else {
+							if nodeName == "" {
 								klog.V(4).Infof("Preempt for %v/%v in pool %v not feasible or failed: %v", pod.Namespace, pod.Name, poolName, e)
 							}
 							metrics.PreemptionAttempts.Inc()
@@ -510,6 +508,10 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 							metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PreemptionEvaluation).Observe(metrics.SinceInSeconds(preemptionStartTime))
 						}
 					}
+
+					// when come many pods from self pool, to avoid pod from other pool has no chance to schedule,
+					// move all pods from other pools to their self pool queues
+					sched.config.PoolQueue.MoveAllBorrowingPodsToSelfQueue(poolName)
 				}
 			}
 			// Pod did not fit anywhere, so it is counted as a failure. If preemption

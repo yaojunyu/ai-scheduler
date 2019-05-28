@@ -218,7 +218,7 @@ func (p *PoolInfo) AddNodeInfo(item *NodeInfoListItem) error {
 		return nil
 	}
 	if _, ok := p.nodes[item.info.node.Name]; ok {
-		return fmt.Errorf("nodeinfo %v already exist in pool %v", item.info.node.Name, p.Name())
+		klog.Warningf("nodeinfo %v already exist in pool %v", item.info.node.Name, p.Name())
 	}
 	p.nodes[item.info.node.Name] = item
 	p.moveNodeInfoToHead(item.info.node.Name)
@@ -265,9 +265,12 @@ func (p *PoolInfo) ClearPool() {
 	}
 	p.pool = nil
 	p.nodes = nil
+	p.headNode = nil
+	p.capacity = nil
 	p.allocatable = nil
 	p.used = nil
 	p.shared = nil
+	p.nodeInfoSnapshot = nil
 
 	return
 }

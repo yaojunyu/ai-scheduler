@@ -292,7 +292,12 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	if !ok || fitError == nil {
 		return nil, nil, nil, nil, false
 	}
-	if !podEligibleToPreemptOthers(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap) {
+	nodeInfoSnapshot := g.cache.NodeInfoSnapshot(poolName)
+	if nodeInfoSnapshot == nil {
+		err := fmt.Errorf("NodeInfoSnapshot of pool queue %v not exists", poolName)
+		return nil, nil, nil, err, false
+	}
+	if !podEligibleToPreemptOthers(pod, nodeInfoSnapshot.NodeInfoMap) {
 		klog.V(5).Infof("Pod %v/%v is not eligible for more preemption.", pod.Namespace, pod.Name)
 		return nil, nil, nil, nil, false
 	}
@@ -300,7 +305,7 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	//if err != nil {
 	//	return nil, nil, nil, err
 	//}
-	allNodes := g.cache.NodeInfoSnapshot(poolName).Nodes()
+	allNodes := nodeInfoSnapshot.Nodes()
 	if len(allNodes) == 0 {
 		return nil, nil, nil, ErrNoNodesAvailable, true
 	}
@@ -328,7 +333,7 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 		return nil, nil, nil, err, false
 	}
 
-	candidateNode := pickOneNodeForPreemption(nodeToVictims)
+	candidateNode := pickOneNodeForPreemption(nodeToVictims, poolName, g.schedulingQueue)
 	if candidateNode == nil {
 		return nil, nil, nil, nil, true
 	}
@@ -808,7 +813,7 @@ func EqualPriorityMap(_ *v1.Pod, _ interface{}, nodeInfo *schedulerinfo.NodeInfo
 // 5. If there are still ties, the first such node is picked (sort of randomly).
 // The 'minNodes1' and 'minNodes2' are being reused here to save the memory
 // allocation and garbage collection time.
-func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims) *v1.Node {
+func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims, poolName string, poolQueue internalqueue.SchedulingPoolQueue) *v1.Node {
 	if len(nodesToVictims) == 0 {
 		return nil
 	}
@@ -848,6 +853,10 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 		victims := nodesToVictims[node]
 		// highestPodPriority is the highest priority among the victims on this node.
 		highestPodPriority := util.GetPodPriority(victims.Pods[0])
+		// if victim is borrowing pod, has the lowest priority
+		if poolQueue.GetPoolQueueNameIfNotPresent(victims.Pods[0]) != poolName {
+			highestPodPriority = int32(math.MinInt32)
+		}
 		if highestPodPriority < minHighestPriority {
 			minHighestPriority = highestPodPriority
 			lenNodes2 = 0
@@ -873,7 +882,12 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 			// needed so that a node with a few pods with negative priority is not
 			// picked over a node with a smaller number of pods with the same negative
 			// priority (and similar scenarios).
-			sumPriorities += int64(util.GetPodPriority(pod)) + int64(math.MaxInt32+1)
+			podPriority := util.GetPodPriority(pod)
+			// if victim is borrowing pod, set the lowest priority
+			if poolQueue.GetPoolQueueNameIfNotPresent(pod) != poolName {
+				podPriority = int32(math.MinInt32)
+			}
+			sumPriorities += int64(podPriority) + int64(math.MaxInt32+1)
 		}
 		if sumPriorities < minSumPriorities {
 			minSumPriorities = sumPriorities

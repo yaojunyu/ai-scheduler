@@ -425,8 +425,7 @@ func (cache *schedulerCache) AddPool(pool *v1alpha1.Pool) error {
 		cache.pools[pool.Name] = pi
 	}
 	pi.SetPool(pool)
-	// compute default pool
-	return cache.subFromDefaultPool(pi)
+	return cache.moveAllNodeInfosFromMatchedPoolsTo(pi)
 }
 
 func (cache *schedulerCache) UpdatePool(oldPool, newPool *v1alpha1.Pool) error {
@@ -438,16 +437,15 @@ func (cache *schedulerCache) UpdatePool(oldPool, newPool *v1alpha1.Pool) error {
 		pi = schedulerinfo.NewPoolInfo()
 		cache.pools[newPool.Name] = pi
 		pi.SetPool(newPool)
-		return cache.subFromDefaultPool(pi)
+		return cache.moveAllNodeInfosFromMatchedPoolsTo(pi)
 	}
 	pi.SetPool(newPool)
 	// check if need change
 	if PoolResourcePropertiesChanged(oldPool, newPool) {
-		// gc resources to default pool
-		if err := cache.addToDefaultPool(pi); err != nil {
+		if err := cache.moveNodeInfosToMatchedPoolFrom(pi); err != nil {
 			return err
 		}
-		return cache.subFromDefaultPool(pi)
+		return cache.moveAllNodeInfosFromMatchedPoolsTo(pi)
 	}
 	return nil
 }
@@ -484,8 +482,8 @@ func (cache *schedulerCache) RemovePool(pool *v1alpha1.Pool) error {
 	if !ok {
 		return nil
 	}
-	// gc resources to default pool
-	err := cache.addToDefaultPool(pi)
+	// gc resources to exists pool
+	err := cache.moveNodeInfosToMatchedPoolFrom(pi)
 	if err == nil {
 		delete(cache.pools, pool.Name)
 		pi.ClearPool()
@@ -509,35 +507,83 @@ func (cache *schedulerCache) Pools() map[string]*schedulerinfo.PoolInfo {
 	return cache.pools
 }
 
-func (cache *schedulerCache) addToDefaultPool(p *schedulerinfo.PoolInfo) error {
+func (cache *schedulerCache) moveNodeInfosToMatchedPoolFrom(p *schedulerinfo.PoolInfo) error {
 	if p == nil {
 		return nil
 	}
 	df := cache.defaultPool()
-	for _, item := range p.Nodes() {
-		if err := p.RemoveNodeInfo(item); err != nil {
-			return err
+	// move all conflict nodes from default pool to its matched pool when delete p
+	for _, item := range df.Nodes() {
+		var matches []*schedulerinfo.PoolInfo
+		for n, pi := range cache.pools {
+			if n == p.Name() {
+				continue
+			}
+			if pi.MatchNode(item.Info().Node()) {
+				matches = append(matches, pi)
+			}
 		}
-		if err := df.AddNodeInfo(item); err != nil {
-			return err
+		if len(matches) == 1 {
+			// conflict node has not conflicts now
+			df.RemoveNodeInfo(item)
+			matches[0].AddNodeInfo(item)
+		}
+	}
+
+	// move all nodes from p to default pool or matched pools
+	for _, item := range p.Nodes() {
+		var matches []*schedulerinfo.PoolInfo
+		for n, pi := range cache.pools {
+			if n == p.Name() {
+				continue
+			}
+			if pi.MatchNode(item.Info().Node()) {
+				matches = append(matches, pi)
+			}
+		}
+		p.RemoveNodeInfo(item)
+		if len(matches) == 1 {
+			// ensure node not conflict in pools
+			matches[0].AddNodeInfo(item)
+		} else {
+			df.AddNodeInfo(item)
 		}
 	}
 	return nil
 }
 
-func (cache *schedulerCache) subFromDefaultPool(p *schedulerinfo.PoolInfo) error {
+func (cache *schedulerCache) moveAllNodeInfosFromMatchedPoolsTo(p *schedulerinfo.PoolInfo) error {
 	if p == nil {
 		return nil
 	}
 	df := cache.defaultPool()
-	// only sub matched node from default pool
 	for _, item := range df.Nodes() {
-		if p.MatchNode(item.Info().Node()) {
-			if err := df.RemoveNodeInfo(item); err != nil {
-				return err
+		var matches []*schedulerinfo.PoolInfo
+		for _, pi := range cache.pools {
+			if pi.IsDefaultPool() {
+				continue
 			}
-			if err := p.AddNodeInfo(item); err != nil {
-				return err
+			if pi.MatchNode(item.Info().Node()) {
+				matches = append(matches, pi)
+			}
+		}
+		if len(matches) == 1 {
+			if matches[0] != p {
+				klog.Warningf("matches error pool: %v", matches[0].Name())
+				continue
+			}
+			df.RemoveNodeInfo(item)
+			p.AddNodeInfo(item)
+		}
+	}
+	for n, pi := range cache.pools {
+		if pi.IsDefaultPool() || n == p.Name() {
+			continue
+		}
+		for _, item := range pi.Nodes() {
+			if p.MatchNode(item.Info().Node()) {
+				pi.RemoveNodeInfo(item)
+				df.AddNodeInfo(item)
 			}
 		}
 	}
@@ -617,20 +663,26 @@ func (cache *schedulerCache) matchPoolForNode(node *v1.Node) *schedulerinfo.Pool
 		return cache.defaultPool()
 	}
 	var matches []*schedulerinfo.PoolInfo
-	for n, p := range cache.pools {
-		if n == schedulerinfo.DefaultPoolName {
-			continue
-		}
+	for _, p := range cache.pools {
 		if p.MatchNode(node) {
 			matches = append(matches, p)
 		}
 	}
 	klog.V(4).Infof("matched pools for node %v: %v", node.Name, matches)
+
 	if len(matches) == 1 {
 		return matches[0]
+	} else {
+		// when nodes matched more than one pool remove all nodes and add it to default pool
+		df := cache.defaultPool()
+		for _, p := range matches {
+			p.RemoveNode(node)
+		}
+		if _, exists := df.ContainsNode(node.Name); len(matches) > 0 && !exists {
+			df.AddNode(node)
+		}
+		return df
 	}
-	// if matched none or more than one pool return default pool
-	return cache.defaultPool()
 }
 
 // matchPoolForPod
@@ -1020,6 +1072,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 					klog.V(4).Infof("Skip node %v/%v as pod not fit resources: %v, reasons: %v", pi.Name(), ni.Info().Node().Name, err, failedPredicates)
 					continue
 				}
+				klog.V(4).Infof("Got node %v/%v pod fit resources", pi.Name(), ni.Info().Node().Name)
 				return pi.Name()
 			}
 		}

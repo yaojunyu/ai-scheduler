@@ -101,6 +101,7 @@ rules:
     resources:
       - persistentvolumeclaims
       - persistentvolumes
+      - configmaps
     verbs:
       - get
       - list

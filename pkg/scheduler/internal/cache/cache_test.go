@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -1643,6 +1644,242 @@ func TestPoolOperators(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cache.pools[poolName2].Allocatable(), res2) {
 		t.Error("pool resource not right after update nodes")
+	}
+}
+
+func TestSchedulerCache_AddPool(t *testing.T) {
+	tests := []struct {
+		name   string
+		nodes  []*v1.Node
+		pool   *v1alpha1.Pool
+		pools  []*v1alpha1.Pool
+		expect map[string][]string
+	}{
+		{
+			name: "Add a pool not has intersection nodes",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+			},
+			pool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+			},
+			expect: map[string][]string{"": {}, "pool1": {"node1", "node2"}, "pool2": {"node3"}},
+		},
+		{
+			name: "Add a pool has intersection nodes",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true", "pool2": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+			},
+			pool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node2"}, "pool1": {"node1"}, "pool2": {"node3"}},
+		},
+		{
+			name: "Add a pool has intersection nodes more than 2 pools",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true", "pool2": "true", "pool3": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node4", Labels: map[string]string{"pool3": "true"}}},
+			},
+			pool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool3"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool3": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node2"}, "pool1": {"node1"}, "pool2": {"node3"}, "pool3": {"node4"}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cache := newSchedulerCache(time.Second, time.Second, nil)
+			for _, node := range test.nodes {
+				cache.AddNode(node)
+			}
+			for _, pool := range test.pools {
+				cache.AddPool(pool)
+			}
+			cache.AddPool(test.pool)
+			got := allNodesInPools(cache.pools)
+			e := fmt.Sprintf("%v", test.expect)
+			g := fmt.Sprintf("%v", got)
+			if e != g {
+				t.Errorf("unexcepted pool nodes: expected=%v, got=%v", e, g)
+			}
+		})
+	}
+}
+
+func allNodesInPools(pools map[string]*schedulerinfo.PoolInfo) map[string][]string {
+	result := make(map[string][]string)
+	for n, pool := range pools {
+		var nodes []string
+		for nn := range pool.Nodes() {
+			nodes = append(nodes, nn)
+		}
+		sort.Strings(nodes)
+		result[n] = nodes
+	}
+	return result
+}
+
+func TestSchedulerCache_RemovePool(t *testing.T) {
+	tests := []struct {
+		name   string
+		nodes  []*v1.Node
+		pool   *v1alpha1.Pool
+		pools  []*v1alpha1.Pool
+		expect map[string][]string
+	}{
+		{
+			name: "Remove a pool not has intersection nodes",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+			},
+			pool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node3"}, "pool1": {"node1", "node2"}},
+		},
+		{
+			name: "Remove a pool has intersection nodes",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true", "pool2": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+			},
+			pool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node3"}, "pool1": {"node1", "node2"}},
+		},
+		{
+			name: "Add a pool has intersection nodes more than 2 pools",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true", "pool2": "true", "pool3": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node4", Labels: map[string]string{"pool3": "true"}}},
+			},
+			pool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool3"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool3": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool3"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool3": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node2", "node4"}, "pool1": {"node1"}, "pool2": {"node3"}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cache := newSchedulerCache(time.Second, time.Second, nil)
+			for _, node := range test.nodes {
+				cache.AddNode(node)
+			}
+			for _, pool := range test.pools {
+				cache.AddPool(pool)
+			}
+			cache.RemovePool(test.pool)
+			got := allNodesInPools(cache.pools)
+			e := fmt.Sprintf("%v", test.expect)
+			g := fmt.Sprintf("%v", got)
+			if e != g {
+				t.Errorf("unexcepted pool nodes: expected=%v, got=%v", e, g)
+			}
+		})
+	}
+}
+
+func TestSchedulerCache_UpdatePool(t *testing.T) {
+	tests := []struct {
+		name    string
+		nodes   []*v1.Node
+		oldPool *v1alpha1.Pool
+		newPool *v1alpha1.Pool
+		pools   []*v1alpha1.Pool
+		expect  map[string][]string
+	}{
+		{
+			name: "Update a pool will not create intersection nodes",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+			},
+			oldPool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			newPool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "false"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node3"}, "pool1": {"node1", "node2"}, "pool2": {}},
+		},
+		{
+			name: "Update a pool will create intersection nodes",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+			},
+			oldPool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			newPool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node1", "node2", "node3"}, "pool1": {}, "pool2": {}},
+		},
+		{
+			name: "Update a pool has intersection nodes more than 2 pools",
+			nodes: []*v1.Node{
+				{ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true", "pool2": "true", "pool3": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node3", Labels: map[string]string{"pool2": "true"}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "node4", Labels: map[string]string{"pool3": "true"}}},
+			},
+			oldPool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool3"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool3": "true"}}}},
+			newPool: &v1alpha1.Pool{ObjectMeta: metav1.ObjectMeta{Name: "pool3"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+			pools: []*v1alpha1.Pool{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool1"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool2"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pool3"}, Spec: v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool3": "true"}}}},
+			},
+			expect: map[string][]string{"": {"node1", "node2", "node4"}, "pool1": {}, "pool2": {"node3"}, "pool3": {}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cache := newSchedulerCache(time.Second, time.Second, nil)
+			for _, node := range test.nodes {
+				cache.AddNode(node)
+			}
+			for _, pool := range test.pools {
+				cache.AddPool(pool)
+			}
+			cache.UpdatePool(test.oldPool, test.newPool)
+			got := allNodesInPools(cache.pools)
+			e := fmt.Sprintf("%v", test.expect)
+			g := fmt.Sprintf("%v", got)
+			if e != g {
+				t.Errorf("unexcepted pool nodes: expected=%v, got=%v", e, g)
+			}
+		})
 	}
 }
 
