@@ -303,7 +303,7 @@ func (sched *Scheduler) preempt(poolName string, preemptor *v1.Pod, scheduleErr 
 
 	node, victims, nominatedPodsToClear, err, needBorrow := sched.config.Algorithm.Preempt(poolName, preemptor, sched.config.NodeLister, scheduleErr)
 	if err != nil {
-		klog.Errorf("Error preempting victims to make room for %v/%v.", preemptor.Namespace, preemptor.Name)
+		klog.Warningf("Preempting victims to make room for %v/%v failed: %v", preemptor.Namespace, preemptor.Name, err)
 		return "", err, needBorrow
 	}
 	var nodeName = ""
