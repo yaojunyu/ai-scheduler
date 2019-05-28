@@ -292,7 +292,12 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	if !ok || fitError == nil {
 		return nil, nil, nil, nil, false
 	}
-	if !podEligibleToPreemptOthers(pod, g.cache.NodeInfoSnapshot(poolName).NodeInfoMap) {
+	nodeInfoSnapshot := g.cache.NodeInfoSnapshot(poolName)
+	if nodeInfoSnapshot == nil {
+		err := fmt.Errorf("NodeInfoSnapshot of pool queue %v not exists", poolName)
+		return nil, nil, nil, err, false
+	}
+	if !podEligibleToPreemptOthers(pod, nodeInfoSnapshot.NodeInfoMap) {
 		klog.V(5).Infof("Pod %v/%v is not eligible for more preemption.", pod.Namespace, pod.Name)
 		return nil, nil, nil, nil, false
 	}
@@ -300,7 +305,7 @@ func (g *genericScheduler) Preempt(poolName string, pod *v1.Pod, nodeLister algo
 	//if err != nil {
 	//	return nil, nil, nil, err
 	//}
-	allNodes := g.cache.NodeInfoSnapshot(poolName).Nodes()
+	allNodes := nodeInfoSnapshot.Nodes()
 	if len(allNodes) == 0 {
 		return nil, nil, nil, ErrNoNodesAvailable, true
 	}
