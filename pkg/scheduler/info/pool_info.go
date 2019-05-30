@@ -438,7 +438,7 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 	}
 	// if build-in default pool always return false
 
-	if p.pool.Spec.NodeSelector == nil && p.pool.Spec.SupportResources == nil {
+	if p.pool.Spec.NodeSelector == nil /* && p.pool.Spec.SupportResources == nil*/ {
 		return false
 	}
 
@@ -448,13 +448,13 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 		}
 	}
 
-	if p.pool.Spec.SupportResources != nil && len(p.pool.Spec.SupportResources) > 0 {
-		for _, rn := range p.pool.Spec.SupportResources {
-			if _, ok := node.Status.Allocatable[rn]; !ok {
-				return false
-			}
-		}
-	}
+	//if p.pool.Spec.SupportResources != nil && len(p.pool.Spec.SupportResources) > 0 {
+	//	for _, rn := range p.pool.Spec.SupportResources {
+	//		if _, ok := node.Status.Allocatable[rn]; !ok {
+	//			return false
+	//		}
+	//	}
+	//}
 
 	return true
 }
