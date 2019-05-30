@@ -1883,6 +1883,289 @@ func TestSchedulerCache_UpdatePool(t *testing.T) {
 	}
 }
 
+func TestSchedulerCache_UpdateNode(t *testing.T) {
+	tests := []struct {
+		name    string
+		nodes   []*v1.Node
+		pools   []*v1alpha1.Pool
+		oldNode *v1.Node
+		newNode *v1.Node
+		expect  map[string][]string
+	}{
+		{
+			name: "Update node not change pool",
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+						Capacity: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+						Capacity: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+			},
+			pools: []*v1alpha1.Pool{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "pool1"},
+					Spec:       v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "pool2"},
+					Spec:       v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}},
+				},
+			},
+			oldNode: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}},
+				Status: v1.NodeStatus{
+					Allocatable: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+					},
+					Capacity: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+					},
+				},
+			},
+			newNode: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}},
+				Status: v1.NodeStatus{
+					Allocatable: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(6000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(220, resource.DecimalSI),
+					},
+					Capacity: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(6000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(220, resource.DecimalSI),
+					},
+				},
+			},
+			expect: map[string][]string{"": {}, "pool1": {"node1", "node2"}, "pool2": {}},
+		},
+		{
+			name: "Update node remove from a pool",
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+						Capacity: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+						Capacity: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+			},
+			pools: []*v1alpha1.Pool{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "pool1"},
+					Spec:       v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "pool2"},
+					Spec:       v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}},
+				},
+			},
+			oldNode: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}},
+				Status: v1.NodeStatus{
+					Allocatable: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+					},
+					Capacity: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+					},
+				},
+			},
+			newNode: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool2": "true"}},
+				Status: v1.NodeStatus{
+					Allocatable: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(6000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(220, resource.DecimalSI),
+					},
+					Capacity: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(6000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(220, resource.DecimalSI),
+					},
+				},
+			},
+			expect: map[string][]string{"": {}, "pool1": {"node1"}, "pool2": {"node2"}},
+		},
+		{
+			name: "Update node match multi pools",
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "node1", Labels: map[string]string{"pool1": "true"}},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+						Capacity: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}},
+					Status: v1.NodeStatus{
+						Allocatable: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+						Capacity: v1.ResourceList{
+							v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+							v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+							v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+							"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+						},
+					},
+				},
+			},
+			pools: []*v1alpha1.Pool{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "pool1"},
+					Spec:       v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool1": "true"}}},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "pool2"},
+					Spec:       v1alpha1.PoolSpec{NodeSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"pool2": "true"}}},
+				},
+			},
+			oldNode: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true"}},
+				Status: v1.NodeStatus{
+					Allocatable: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+					},
+					Capacity: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(1000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(1000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(3000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(110, resource.DecimalSI),
+					},
+				},
+			},
+			newNode: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "node2", Labels: map[string]string{"pool1": "true", "pool2": "true"}},
+				Status: v1.NodeStatus{
+					Allocatable: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(6000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(220, resource.DecimalSI),
+					},
+					Capacity: v1.ResourceList{
+						v1.ResourceCPU:     *resource.NewMilliQuantity(2000, resource.DecimalSI),
+						v1.ResourceMemory:  *resource.NewQuantity(2000*(1024*1024), resource.DecimalSI),
+						v1.ResourceStorage: *resource.NewQuantity(6000*(1024*1024), resource.DecimalSI),
+						"pods":             *resource.NewQuantity(220, resource.DecimalSI),
+					},
+				},
+			},
+			expect: map[string][]string{"": {"node2"}, "pool1": {"node1"}, "pool2": {}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cache := newSchedulerCache(time.Second, time.Second, nil)
+			for _, node := range test.nodes {
+				cache.AddNode(node)
+			}
+			for _, pool := range test.pools {
+				cache.AddPool(pool)
+			}
+			cache.UpdateNode(test.oldNode, test.newNode)
+			got := allNodesInPools(cache.pools)
+			e := fmt.Sprintf("%v", test.expect)
+			g := fmt.Sprintf("%v", got)
+			if e != g {
+				t.Errorf("unexcepted pool nodes: expected=%v, got=%v", e, g)
+			}
+		})
+	}
+}
+
 func TestSchedulerCacheBorrowPool(t *testing.T) {
 	var largeContainers = []v1.Container{
 		{
