@@ -210,7 +210,7 @@ func (p *PoolInfo) UpdateNode(oldNode, newNode *v1.Node) error {
 
 // AddNode add node to tool, and compute all resources value
 func (p *PoolInfo) AddNodeInfo(item *NodeInfoListItem) error {
-	if p == nil || item == nil || item.info == nil {
+	if p == nil || item == nil || item.info == nil || item.info.node == nil {
 		return nil
 	}
 	if item.info.node == nil {
@@ -234,7 +234,7 @@ func (p *PoolInfo) AddNodeInfo(item *NodeInfoListItem) error {
 
 // RemoveNode remove node from pool
 func (p *PoolInfo) RemoveNodeInfo(item *NodeInfoListItem) error {
-	if p == nil || item == nil || item.info == nil {
+	if p == nil || item == nil || item.info == nil || item.info.node == nil {
 		return nil
 	}
 	if _, ok := p.nodes[item.info.node.Name]; !ok {
