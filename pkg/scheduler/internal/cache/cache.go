@@ -1046,7 +1046,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 		}
 		sharingPools := util.SortableList{CompFunc: higherIdleFunc}
 		for _, p := range cache.pools {
-			// if pod in other pool ignore self pool disableSharing and ignore borrow current pool
+			// skip other pools that set disableSharing=true and current fromPool
 			if (selfPoolName != p.Name() && p.DisableSharing()) || fromPoolName == p.Name() {
 				continue
 			}

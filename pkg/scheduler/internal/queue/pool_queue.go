@@ -31,6 +31,7 @@ type SchedulingPoolQueue interface {
 
 	GetPoolQueueNameIfNotPresent(pod *v1.Pod) string
 	MoveAllBorrowingPodsToSelfQueue(poolName string)
+	HasSelfPoolPendingPods(poolName string) bool
 	Close()
 }
 
@@ -357,4 +358,21 @@ func (pq *PoolQueue) MoveAllBorrowingPodsToSelfQueue(poolName string) {
 			}
 		}
 	}
+}
+
+// HasSelfPoolPendingPods check pool has their self pod to schedule
+func (pq *PoolQueue) HasSelfPoolPendingPods(poolName string) bool {
+	pq.lock.Lock()
+	defer pq.lock.Unlock()
+	queue, ok := pq.queues[poolName]
+	if !ok {
+		return false
+	}
+	for _, pod := range queue.PendingPods() {
+		selfPoolName := pq.matchPoolQueueNameForPod(pod)
+		if selfPoolName == poolName {
+			return true
+		}
+	}
+	return false
 }
