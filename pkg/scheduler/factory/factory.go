@@ -822,37 +822,3 @@ func (p *podPreemptor) RemoveNominatedNodeName(pod *v1.Pod) error {
 	}
 	return p.SetNominatedNodeName(pod, "")
 }
-
-func addToNextPool(poolName string, pod *v1.Pod) {
-	borrowPoolName := poolName
-	if needBorrow {
-		selfPoolName := poolQueue.GetPoolQueueNameIfNotPresent(pod)
-		borrowPoolName = schedulerCache.BorrowPool(poolName, pod)
-		if borrowPoolName != selfPoolName {
-			// check borrow pool whether has pending pods, if so add pod to self pool
-			if q, err := poolQueue.GetQueue(borrowPoolName); err == nil && len(q.PendingPods()) > 0 {
-				borrowPoolName = selfPoolName
-			}
-		}
-	}
-	if borrowPoolName == poolName {
-		// if is the same pool add pod to unscheduleable queue
-		if err := podQueue.AddUnschedulableIfNotPresent(pod, podSchedulingCycle); err == nil {
-			klog.V(4).Infof("Add pod %v/%v to unschedulable queue of pool queue %v succeed", pod.Namespace, pod.Name, borrowPoolName)
-		} else {
-			klog.V(4).Infof("Add pod %v/%v to unschedulable queue of pool queue %v failed: %v", pod.Namespace, pod.Name, borrowPoolName, err)
-		}
-	} else {
-		// if is other pool add pod to active queue
-		q, err := poolQueue.GetQueue(borrowPoolName)
-		if err != nil {
-			klog.Errorf("Get queue failed: %v", err)
-		} else {
-			if err := q.AddIfNotPresent(pod); err == nil {
-				klog.V(4).Infof("Add pod %v/%v to active queue of pool queue %v succeed", pod.Namespace, pod.Name, borrowPoolName)
-			} else {
-				klog.V(4).Infof("Add pod %v/%v to active queue of pool queue %v failed: %v", pod.Namespace, pod.Name, borrowPoolName, err)
-			}
-		}
-	}
-}
