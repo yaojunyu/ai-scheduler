@@ -210,7 +210,7 @@ func (p *PoolInfo) UpdateNode(oldNode, newNode *v1.Node) error {
 
 // AddNode add node to tool, and compute all resources value
 func (p *PoolInfo) AddNodeInfo(item *NodeInfoListItem) error {
-	if p == nil || item == nil || item.info == nil {
+	if p == nil || item == nil || item.info == nil || item.info.node == nil {
 		return nil
 	}
 	if item.info.node == nil {
@@ -234,7 +234,7 @@ func (p *PoolInfo) AddNodeInfo(item *NodeInfoListItem) error {
 
 // RemoveNode remove node from pool
 func (p *PoolInfo) RemoveNodeInfo(item *NodeInfoListItem) error {
-	if p == nil || item == nil || item.info == nil {
+	if p == nil || item == nil || item.info == nil || item.info.node == nil {
 		return nil
 	}
 	if _, ok := p.nodes[item.info.node.Name]; !ok {
@@ -438,7 +438,7 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 	}
 	// if build-in default pool always return false
 
-	if p.pool.Spec.NodeSelector == nil && p.pool.Spec.SupportResources == nil {
+	if p.pool.Spec.NodeSelector == nil /* && p.pool.Spec.SupportResources == nil*/ {
 		return false
 	}
 
@@ -448,13 +448,13 @@ func (p *PoolInfo) MatchNode(node *v1.Node) bool {
 		}
 	}
 
-	if p.pool.Spec.SupportResources != nil && len(p.pool.Spec.SupportResources) > 0 {
-		for _, rn := range p.pool.Spec.SupportResources {
-			if _, ok := node.Status.Allocatable[rn]; !ok {
-				return false
-			}
-		}
-	}
+	//if p.pool.Spec.SupportResources != nil && len(p.pool.Spec.SupportResources) > 0 {
+	//	for _, rn := range p.pool.Spec.SupportResources {
+	//		if _, ok := node.Status.Allocatable[rn]; !ok {
+	//			return false
+	//		}
+	//	}
+	//}
 
 	return true
 }

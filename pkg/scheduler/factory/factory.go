@@ -710,7 +710,14 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 					if len(pod.Spec.NodeName) == 0 {
 						borrowPoolName := poolName
 						if needBorrow {
+							selfPoolName := poolQueue.GetPoolQueueNameIfNotPresent(pod)
 							borrowPoolName = schedulerCache.BorrowPool(poolName, pod)
+							if borrowPoolName != selfPoolName {
+								// check borrow pool whether has self pending pods, if so add pod to self pool
+								if poolQueue.HasSelfPoolPendingPods(borrowPoolName) {
+									borrowPoolName = selfPoolName
+								}
+							}
 						}
 						if borrowPoolName == poolName {
 							// if is the same pool add pod to unscheduleable queue

@@ -672,17 +672,8 @@ func (cache *schedulerCache) matchPoolForNode(node *v1.Node) *schedulerinfo.Pool
 
 	if len(matches) == 1 {
 		return matches[0]
-	} else {
-		// when nodes matched more than one pool remove all nodes and add it to default pool
-		df := cache.defaultPool()
-		for _, p := range matches {
-			p.RemoveNode(node)
-		}
-		if _, exists := df.ContainsNode(node.Name); len(matches) > 0 && !exists {
-			df.AddNode(node)
-		}
-		return df
 	}
+	return cache.defaultPool()
 }
 
 // matchPoolForPod
@@ -1055,7 +1046,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 		}
 		sharingPools := util.SortableList{CompFunc: higherIdleFunc}
 		for _, p := range cache.pools {
-			// if pod in other pool ignore self pool disableSharing and ignore borrow current pool
+			// skip other pools that set disableSharing=true and current fromPool
 			if (selfPoolName != p.Name() && p.DisableSharing()) || fromPoolName == p.Name() {
 				continue
 			}
