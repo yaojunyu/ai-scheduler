@@ -715,6 +715,7 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 							if borrowPoolName != selfPoolName {
 								// check borrow pool whether has self pending pods, if so add pod to self pool
 								if poolQueue.HasSelfPoolPendingPods(borrowPoolName) {
+									klog.V(4).Infof("Change to self pool %v as borrowing pool %v has self pool pending pods", selfPoolName, borrowPoolName)
 									borrowPoolName = selfPoolName
 								}
 							}
