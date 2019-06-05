@@ -4,10 +4,11 @@ MINOR_VER=2
 RELEASE_VER=v0.2.3
 REPO_PATH=gitlab.aibee.cn/platform/ai-scheduler
 GitTreeState="clean"
-GitSHA=`git rev-parse HEAD`
+GitSHA=`git rev-parse --short HEAD`
 Date=`date "+%Y-%m-%d %H:%M:%S"`
 REL_OSARCH="linux/amd64"
 IMAGE_PREFIX=registry.aibee.cn/platform/kubernetes
+CI_REPO_PATH="registry.aibee.cn/platform/aischeduler-ci:1.0"
 LD_FLAGS=" \
 	-X '${REPO_PATH}/pkg/version.gitMajor=${MAJOR_VER}' \
 	-X '${REPO_PATH}/pkg/version.gitMinor=${MINOR_VER}' \
@@ -21,7 +22,7 @@ LD_FLAGS=" \
 all: ai-scheduler
 
 ai-scheduler: init
-	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/ai-scheduler ./cmd/ai-scheduler
+	go build -v -ldflags ${LD_FLAGS} -o=${BIN_DIR}/ai-scheduler ./cmd/ai-scheduler
 
 verify: generate-code
 	hack/verify-gofmt.sh
@@ -32,6 +33,10 @@ verify: generate-code
 
 init:
 	mkdir -p ${BIN_DIR}
+
+docker_build: init
+	docker pull ${CI_REPO_PATH}
+	docker run --rm -v $(PWD):/go/src/${REPO_PATH} -w /go/src/${REPO_PATH} registry.aibee.cn/platform/aischeduler-ci:1.0 make
 
 rel_bins:
 	go get github.com/mitchellh/gox

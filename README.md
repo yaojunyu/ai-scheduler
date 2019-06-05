@@ -366,3 +366,7 @@ spec:
 > 指定`resource.aibee.cn/pool: cpu-pool`，任务将被加入cpu-pool的调度队列中进行调度，优先使用cpu-pool的资源；
 >
 > 指定`schedulerName: ai-scheduler`，所有任务都需要指定由Ai-Scheduler进行任务调度。
+
+## 开发
+
+见 [开发文档](docs/development.md)
