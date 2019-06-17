@@ -119,3 +119,5 @@ func (c *Cache) NodeInfoSnapshot(poolName string) *info.NodeInfoSnapshot { retur
 func (c *Cache) GetPoolContainsNode(nodeName string) *info.PoolInfo { return nil }
 
 func (c *Cache) BorrowPool(fromPoolName string, pod *v1.Pod) string { return "" }
+
+func (c *Cache) Metrics() { return }
