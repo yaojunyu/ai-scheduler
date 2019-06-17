@@ -2,6 +2,8 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: pools.resource.aibee.cn
+  annotations:
+    "helm.sh/hook": "crd-install"
 spec:
   group: resource.aibee.cn
   versions:
@@ -40,27 +42,6 @@ spec:
               type: boolean
           type: object
       type: object
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ai-scheduler-config
-  namespace: kube-system
-data:
-  kubeschedulerconfig.yaml: |
-    apiVersion: kubescheduler.config.k8s.io/v1alpha1
-    kind: KubeSchedulerConfiguration
-    leaderElection:
-      leaderElect: true
-      leaseDuration: "15s"
-      renewDeadline: "10s"
-      retryPeriod: "2s"
-      lockObjectNamespace: kube-system
-      lockObjectName: ai-scheduler
-    schedulerName: ai-scheduler
-    healthzBindAddress: 0.0.0.0:20999
-    metricsBindAddress: 0.0.0.0:20999
-    disablePreemption: true
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -130,6 +111,7 @@ rules:
     resources:
       - replicationcontrollers
       - services
+      - storageclasses
     verbs:
       - get
       - list
@@ -164,6 +146,7 @@ rules:
     resources:
       - persistentvolumeclaims
       - persistentvolumes
+      - configmaps
     verbs:
       - get
       - list
@@ -220,6 +203,27 @@ subjects:
     name: ai-scheduler
     namespace: kube-system
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-scheduler-config
+  namespace: kube-system
+data:
+  kubeschedulerconfig.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1alpha1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: true
+      leaseDuration: 15s
+      renewDeadline: 10s
+      retryPeriod: 2s
+      lockObjectNamespace: kube-system
+      lockObjectName: ai-scheduler
+    schedulerName: ai-scheduler
+    healthzBindAddress: 0.0.0.0:20999
+    metricsBindAddress: 0.0.0.0:20999
+    disablePreemption: true
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -228,6 +232,7 @@ metadata:
   annotations:
     scheduler.alpha.kubernetes.io/critical-pod: ""
   labels:
+    hel.sh/chart: "ai-scheduler-0.2.3"
     component: scheduler
     tier: control-plane
     app: ai-scheduler
@@ -250,7 +255,7 @@ spec:
     spec:
       containers:
         - name: ai-scheduler
-          image: registry.aibee.cn/platform/kubernetes/ai-scheduler:v0.1.0-alpha0
+          image: "registry.aibee.cn/platform/kubernetes/ai-scheduler:v0.2.3"
           command:
             - /usr/local/bin/ai-scheduler
             - --config=/etc/kubernetes/kubeschedulerconfig.yaml
@@ -272,11 +277,11 @@ spec:
               path: /healthz
           resources:
             limits:
-              cpu: 2000m
-              memory: 2048Mi
+              cpu: 2
+              memory: 2Gi
             requests:
-              cpu: 2000m
-              memory: 2048Mi
+              cpu: 2
+              memory: 2Gi
           securityContext:
             privileged: false
           terminationMessagePath: /dev/termination-log
@@ -290,8 +295,13 @@ spec:
             name: ai-scheduler-config
       dnsPolicy: ClusterFirst
       hostNetwork: true
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Equal"
+          value: ""
+          effect: "NoSchedule"
       nodeSelector:
-        kubernetes.io/role: master
+        node-role.kubernetes.io/master: ""
       priorityClassName: system-cluster-critical
       restartPolicy: Always
       schedulerName: default-scheduler
