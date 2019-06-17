@@ -377,7 +377,7 @@ func (p *PoolInfo) DisableSharing() bool {
 
 func (p *PoolInfo) DisableBorrowing() bool {
 	if p == nil || p.pool == nil {
-		return false
+		return true
 	}
 	return p.pool.Spec.DisableBorrowing
 }
@@ -656,4 +656,16 @@ func (p *PoolInfo) reducePodResource(pod *v1.Pod) {
 
 func (p *PoolInfo) String() string {
 	return p.Name()
+}
+
+func (p *PoolInfo) CanBorrowPool(poolName string) bool {
+	if p.DisableBorrowing() {
+		return false
+	}
+	if p.pool.Spec.BorrowingPools == nil ||
+		p.pool.Spec.BorrowingPools.Len() == 0 ||
+		p.pool.Spec.BorrowingPools.Has(poolName) {
+		return true
+	}
+	return false
 }

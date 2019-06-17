@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	apiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -26,7 +27,7 @@ type Pool struct {
 }
 
 // PoolSpec
-type PoolSpec struct{
+type PoolSpec struct {
 	// NodeSelector match node label
 	// +optional
 	NodeSelector *metav1.LabelSelector `json:"nodeSelector,omitempty"`
@@ -61,6 +62,12 @@ type PoolSpec struct{
 	// if true, task will only can use deserved resources
 	// +optional
 	DisableBorrowing bool `json:"disableBorrowing,omitempty"`
+
+	// BorrowingPools only borrow from those pools,
+	// only available when DisableBorrowing is false,
+	// if empty can borrow all sharing pools
+	// +optional
+	BorrowingPools sets.String `json:"borrowingPools,omitempty"`
 
 	// DisableSharing flag if self pool share its resource to other pool,
 	// if false, the pool can be preempted by task in other pool
