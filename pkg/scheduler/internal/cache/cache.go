@@ -18,6 +18,9 @@ package cache
 
 import (
 	"fmt"
+	"github.com/kubernetes-sigs/kube-batch/pkg/scheduler/api"
+	"github.com/prometheus/client_golang/prometheus"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
 	"reflect"
 	"sync"
 	"time"
@@ -1070,4 +1073,55 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 	}
 	klog.V(4).Infof("pool %v disabled borrowing: %v, or Not any pools fit pod %v/%v", selfPoolName, selfPoolInfo.DisableBorrowing(), pod.Namespace, pod.Name)
 	return selfPoolName
+}
+
+func (cache *schedulerCache) Metrics() {
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
+	for poolName, poolInfo := range cache.pools {
+		if poolName == schedulerinfo.DefaultPoolName {
+			poolName = "default"
+		}
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceCpu, "type": metrics.PoolDetailTypeCapacity}).Set(float64(poolInfo.Capacity().MilliCPU))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceGpu, "type": metrics.PoolDetailTypeCapacity}).Set(float64(poolInfo.Capacity().ScalarResources[api.GPUResourceName]))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceMem, "type": metrics.PoolDetailTypeCapacity}).Set(float64(poolInfo.Capacity().Memory))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceEStorage, "type": metrics.PoolDetailTypeCapacity}).Set(float64(poolInfo.Capacity().EphemeralStorage))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceNode, "type": metrics.PoolDetailTypeCapacity}).Set(float64(poolInfo.NumNodes()))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourcePods, "type": metrics.PoolDetailTypeCapacity}).Set(float64(poolInfo.Capacity().AllowedPodNumber))
+
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceCpu, "type": metrics.PoolDetailTypeAllocatable}).Set(float64(poolInfo.Allocatable().MilliCPU))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceGpu, "type": metrics.PoolDetailTypeAllocatable}).Set(float64(poolInfo.Allocatable().ScalarResources[api.GPUResourceName]))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceMem, "type": metrics.PoolDetailTypeAllocatable}).Set(float64(poolInfo.Allocatable().Memory))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceEStorage, "type": metrics.PoolDetailTypeAllocatable}).Set(float64(poolInfo.Allocatable().EphemeralStorage))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceNode, "type": metrics.PoolDetailTypeAllocatable}).Set(float64(poolInfo.NodeTree().NumNodes()))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourcePods, "type": metrics.PoolDetailTypeAllocatable}).Set(float64(poolInfo.Allocatable().AllowedPodNumber))
+
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceCpu, "type": metrics.PoolDetailTypeUsed}).Set(float64(poolInfo.Used().MilliCPU))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceGpu, "type": metrics.PoolDetailTypeUsed}).Set(float64(poolInfo.Used().ScalarResources[api.GPUResourceName]))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceMem, "type": metrics.PoolDetailTypeUsed}).Set(float64(poolInfo.Used().Memory))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceEStorage, "type": metrics.PoolDetailTypeUsed}).Set(float64(poolInfo.Used().EphemeralStorage))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourcePods, "type": metrics.PoolDetailTypeUsed}).Set(float64(poolInfo.Used().AllowedPodNumber))
+
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceCpu, "type": metrics.PoolDetailTypeShared}).Set(float64(poolInfo.Shared().MilliCPU))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceGpu, "type": metrics.PoolDetailTypeShared}).Set(float64(poolInfo.Shared().ScalarResources[api.GPUResourceName]))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceMem, "type": metrics.PoolDetailTypeShared}).Set(float64(poolInfo.Shared().Memory))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceEStorage, "type": metrics.PoolDetailTypeShared}).Set(float64(poolInfo.Shared().EphemeralStorage))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourcePods, "type": metrics.PoolDetailTypeShared}).Set(float64(poolInfo.Shared().AllowedPodNumber))
+
+		var preemption = float64(0)
+		var borrowing = float64(0)
+		var sharing = float64(0)
+		if !poolInfo.DisablePreemption() {
+			preemption = float64(1)
+		}
+		if !poolInfo.DisableBorrowing() {
+			borrowing = float64(1)
+		}
+		if !poolInfo.DisableSharing() {
+			sharing = float64(1)
+		}
+		metrics.PoolFeatures.With(prometheus.Labels{"pool": poolName, "feature": metrics.PoolFeaturePreemption}).Set(preemption)
+		metrics.PoolFeatures.With(prometheus.Labels{"pool": poolName, "feature": metrics.PoolFeatureBorrowing}).Set(borrowing)
+		metrics.PoolFeatures.With(prometheus.Labels{"pool": poolName, "feature": metrics.PoolFeatureSharing}).Set(sharing)
+	}
 }

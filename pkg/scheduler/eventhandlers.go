@@ -18,6 +18,7 @@ package scheduler
 
 import (
 	"fmt"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
 	"k8s.io/klog"
 	"reflect"
 
@@ -163,6 +164,7 @@ func (sched *Scheduler) deletePoolFromCache(obj interface{}) {
 
 	sched.config.PoolQueue.RemoveQueue(pool.Name)
 	sched.config.PoolQueue.MoveAllToActiveQueue()
+	metrics.DeletePoolLabels(pool.Name)
 }
 
 func (sched *Scheduler) addNodeToCache(obj interface{}) {

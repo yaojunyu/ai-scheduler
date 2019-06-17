@@ -2,6 +2,9 @@ package queue
 
 import (
 	"fmt"
+	"github.com/kubernetes-sigs/kube-batch/pkg/scheduler/api"
+	"github.com/prometheus/client_golang/prometheus"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
 	"sync"
 
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
@@ -32,6 +35,7 @@ type SchedulingPoolQueue interface {
 	GetPoolQueueNameIfNotPresent(pod *v1.Pod) string
 	MoveAllBorrowingPodsToSelfQueue(poolName string)
 	HasSelfPoolPendingPods(poolName string) bool
+	Metrics()
 	Close()
 }
 
@@ -375,4 +379,20 @@ func (pq *PoolQueue) HasSelfPoolPendingPods(poolName string) bool {
 		}
 	}
 	return false
+}
+
+func (pq *PoolQueue) Metrics() {
+	pq.lock.RLock()
+	defer pq.lock.RUnlock()
+	for poolName, queue := range pq.queues {
+		if poolName == info.DefaultPoolName {
+			poolName = "default"
+		}
+		pendingRes := info.CalculateSumPodsRequestResource(queue.PendingPods())
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceCpu, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.MilliCPU))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceGpu, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.ScalarResources[api.GPUResourceName]))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceMem, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.Memory))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceEStorage, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.EphemeralStorage))
+		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourcePods, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.AllowedPodNumber))
+	}
 }

@@ -45,6 +45,28 @@ const (
 	// Binding - binding operation label value
 	Binding = "binding"
 	// E2eScheduling - e2e scheduling operation label value
+
+	// Pool metrics
+	PoolResourceCpu           = "cpu"
+	PoolResourceGpu           = "gpu"
+	PoolResourceMem           = "memory"
+	PoolResourceEStorage      = "ephemeral-storage"
+	PoolResourceNode          = "node"
+	PoolResourcePods          = "pods"
+	PoolDetailTypeCapacity    = "capacity"
+	PoolDetailTypeAllocatable = "allocatable"
+	PoolDetailTypeUsed        = "used"
+	PoolDetailTypeShared      = "shared"
+	PoolDetailTypePending     = "pending"
+	PoolFeaturePreemption     = "preemption"
+	PoolFeatureBorrowing      = "borrowing"
+	PoolFeatureSharing        = "sharing"
+)
+
+var (
+	PoolDetailResources = [...]string{PoolResourceCpu, PoolResourceGpu, PoolResourceMem, PoolResourceEStorage, PoolResourceNode, PoolResourcePods}
+	PoolDetailTypes     = [...]string{PoolDetailTypeCapacity, PoolDetailTypeAllocatable, PoolDetailTypeUsed, PoolDetailTypeShared, PoolDetailTypePending}
+	PoolDetailFeatures  = [...]string{PoolFeaturePreemption, PoolFeatureBorrowing, PoolFeatureSharing}
 )
 
 // All the histogram based metrics have 1ms as size for the smallest bucket.
@@ -192,6 +214,19 @@ var (
 			Help:      "Total preemption attempts in the cluster till now",
 		})
 
+	PoolResourceDetails = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Subsystem: SchedulerSubsystem,
+			Name:      "pool_resource_details",
+			Help:      "Pool resource details",
+		}, []string{"pool", "resource", "type"})
+	PoolFeatures = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Subsystem: SchedulerSubsystem,
+			Name:      "pool_features",
+			Help:      "Pool scheduling features",
+		}, []string{"pool", "feature"})
+
 	metricsList = []prometheus.Collector{
 		scheduleAttempts,
 		SchedulingLatency,
@@ -210,6 +245,8 @@ var (
 		DeprecatedSchedulingAlgorithmPremptionEvaluationDuration,
 		PreemptionVictims,
 		PreemptionAttempts,
+		PoolResourceDetails,
+		PoolFeatures,
 	}
 )
 
@@ -241,4 +278,16 @@ func SinceInMicroseconds(start time.Time) float64 {
 // SinceInSeconds gets the time since the specified start in seconds.
 func SinceInSeconds(start time.Time) float64 {
 	return time.Since(start).Seconds()
+}
+
+// DeletePoolLabels deletes the labels of pool
+func DeletePoolLabels(poolName string) {
+	for _, r := range PoolDetailResources {
+		for _, t := range PoolDetailTypes {
+			PoolResourceDetails.Delete(prometheus.Labels{"pool": poolName, "resource": r, "type": t})
+		}
+	}
+	for _, f := range PoolDetailFeatures {
+		PoolFeatures.Delete(prometheus.Labels{"pool": poolName, "feature": f})
+	}
 }

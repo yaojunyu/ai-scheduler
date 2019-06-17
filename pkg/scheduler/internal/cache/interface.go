@@ -146,4 +146,7 @@ type Cache interface {
 
 	// BorrowPool get pool to borrow
 	BorrowPool(fromPoolName string, pod *v1.Pod) string
+
+	// Metrics set all pools cache metrics
+	Metrics()
 }

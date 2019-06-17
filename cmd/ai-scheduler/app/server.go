@@ -194,19 +194,19 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 	// Start up the healthz server.
 	if cc.InsecureServing != nil {
 		separateMetrics := cc.InsecureMetricsServing != nil
-		handler := buildHandlerChain(newHealthzHandler(&cc.ComponentConfig, separateMetrics, checks...), nil, nil)
+		handler := buildHandlerChain(newHealthzHandler(sched, &cc.ComponentConfig, separateMetrics, checks...), nil, nil)
 		if err := cc.InsecureServing.Serve(handler, 0, stopCh); err != nil {
 			return fmt.Errorf("failed to start healthz server: %v", err)
 		}
 	}
 	if cc.InsecureMetricsServing != nil {
-		handler := buildHandlerChain(newMetricsHandler(&cc.ComponentConfig), nil, nil)
+		handler := buildHandlerChain(newMetricsHandler(sched, &cc.ComponentConfig), nil, nil)
 		if err := cc.InsecureMetricsServing.Serve(handler, 0, stopCh); err != nil {
 			return fmt.Errorf("failed to start metrics server: %v", err)
 		}
 	}
 	if cc.SecureServing != nil {
-		handler := buildHandlerChain(newHealthzHandler(&cc.ComponentConfig, false, checks...), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
+		handler := buildHandlerChain(newHealthzHandler(sched, &cc.ComponentConfig, false, checks...), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
 		// TODO: handle stoppedCh returned by c.SecureServing.Serve
 		if _, err := cc.SecureServing.Serve(handler, 0, stopCh); err != nil {
 			// fail early for secure handlers, removing the old error loop from above
@@ -282,10 +282,14 @@ func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz 
 	return handler
 }
 
-func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
+func installMetricHandler(sched *scheduler.Scheduler, pathRecorderMux *mux.PathRecorderMux) {
 	configz.InstallHandler(pathRecorderMux)
 	defaultMetricsHandler := prometheus.Handler().ServeHTTP
 	pathRecorderMux.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
+		// set all cache and queue metrics
+		sched.Cache().Metrics()
+		sched.Config().PoolQueue.Metrics()
+
 		if req.Method == "DELETE" {
 			metrics.Reset()
 			io.WriteString(w, "metrics reset\n")
@@ -296,9 +300,9 @@ func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
 }
 
 // newMetricsHandler builds a metrics server from the config.
-func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) http.Handler {
+func newMetricsHandler(sched *scheduler.Scheduler, config *kubeschedulerconfig.KubeSchedulerConfiguration) http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("ai-scheduler")
-	installMetricHandler(pathRecorderMux)
+	installMetricHandler(sched, pathRecorderMux)
 	if config.EnableProfiling {
 		routes.Profiling{}.Install(pathRecorderMux)
 		if config.EnableContentionProfiling {
@@ -311,11 +315,11 @@ func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) h
 // newHealthzHandler creates a healthz server from the config, and will also
 // embed the metrics handler if the healthz and metrics address configurations
 // are the same.
-func newHealthzHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration, separateMetrics bool, checks ...healthz.HealthzChecker) http.Handler {
+func newHealthzHandler(sched *scheduler.Scheduler, config *kubeschedulerconfig.KubeSchedulerConfiguration, separateMetrics bool, checks ...healthz.HealthzChecker) http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("ai-scheduler")
 	healthz.InstallHandler(pathRecorderMux, checks...)
 	if !separateMetrics {
-		installMetricHandler(pathRecorderMux)
+		installMetricHandler(sched, pathRecorderMux)
 	}
 	if config.EnableProfiling {
 		routes.Profiling{}.Install(pathRecorderMux)
