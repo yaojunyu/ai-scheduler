@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ai-scheduler-metrics
+  name: ai-scheduler-metrics
+  namespace: kube-system
+spec:
+  ports:
+    - name: metrics
+      port: 20999
+      protocol: TCP
+      targetPort: 20999
+  selector:
+    app: ai-scheduler
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: ai-scheduler-metrics
+  name: ai-scheduler-metrics
+  namespace: monitoring
+spec:
+  endpoints:
+  - interval: 15s
+    port: metrics
+    scheme: http
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  selector:
+    matchLabels:
+      app: ai-scheduler-metrics
+
