@@ -658,13 +658,16 @@ func (p *PoolInfo) String() string {
 	return p.Name()
 }
 
-func (p *PoolInfo) CanBorrowPool(poolName string) bool {
-	if p.DisableBorrowing() {
+func (p *PoolInfo) CanBorrowPool(pool *PoolInfo) bool {
+	if p.Name() == pool.Name() {
+		return true
+	}
+	if p.DisableBorrowing() || pool.DisableSharing() {
 		return false
 	}
 	if p.pool.Spec.BorrowingPools == nil ||
-		p.pool.Spec.BorrowingPools.Len() == 0 ||
-		p.pool.Spec.BorrowingPools.Has(poolName) {
+		len(p.pool.Spec.BorrowingPools) == 0 ||
+		SliceContainsString(p.pool.Spec.BorrowingPools, pool.Name()) {
 		return true
 	}
 	return false

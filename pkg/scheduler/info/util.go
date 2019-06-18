@@ -108,7 +108,7 @@ func CalculatePodRequestResource(pod *v1.Pod) *Resource {
 	for _, container := range pod.Spec.InitContainers {
 		result.SetMaxResource(container.Resources.Requests)
 	}
-	result.AllowedPodNumber+=1
+	result.AllowedPodNumber += 1
 	return result
 }
 
@@ -122,4 +122,13 @@ func CalculateSumPodsRequestResource(pods []*v1.Pod) *Resource {
 	}
 
 	return sum
+}
+
+func SliceContainsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }

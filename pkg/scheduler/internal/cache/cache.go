@@ -1050,9 +1050,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 		sharingPools := util.SortableList{CompFunc: higherIdleFunc}
 		for _, p := range cache.pools {
 			// skip other pools that set disableSharing=true and current fromPool
-			if (selfPoolName != p.Name() && p.DisableSharing()) ||
-				fromPoolName == p.Name() ||
-				!selfPoolInfo.CanBorrowPool(p.Name()) {
+			if fromPoolName == p.Name() || !selfPoolInfo.CanBorrowPool(p) {
 				continue
 			}
 			sharingPools.Items = append(sharingPools.Items, p)
@@ -1060,12 +1058,12 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 		sharingPools.Sort()
 		for _, p := range sharingPools.Items {
 			pi := p.(*schedulerinfo.PoolInfo)
-			klog.V(4).Infof("Attempt to borrow %v for pod %v/%v@%v in queue '%v'", pi.Name(), pod.Namespace, pod.Name, selfPoolName, fromPoolName)
+			klog.V(4).Infof("Attempt to borrow %q for pod %v/%v@%v in queue %q", pi.Name(), pod.Namespace, pod.Name, selfPoolName, fromPoolName)
 			// predicate for nodes of pool
 			for _, ni := range pi.Nodes() { // FIXME
 				fit, failedPredicates, err := predicates.PodFitsResources(pod, nil, ni.Info())
 				if !fit {
-					klog.V(4).Infof("Skip node %v/%v as pod not fit resources: %v, reasons: %v", pi.Name(), ni.Info().Node().Name, err, failedPredicates)
+					klog.V(10).Infof("Skip node %v/%v as pod not fit resources: %v, reasons: %v", pi.Name(), ni.Info().Node().Name, err, failedPredicates)
 					continue
 				}
 				klog.V(4).Infof("Got node %v/%v pod fit resources", pi.Name(), ni.Info().Node().Name)
@@ -1073,7 +1071,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 			}
 		}
 	}
-	klog.V(4).Infof("pool %v disabled borrowing: %v, or Not any pools fit pod %v/%v", selfPoolName, selfPoolInfo.DisableBorrowing(), pod.Namespace, pod.Name)
+	klog.V(4).Infof("pool %q disabled borrowing: %v, or Not any pools fit pod %v/%v", selfPoolName, selfPoolInfo.DisableBorrowing(), pod.Namespace, pod.Name)
 	return selfPoolName
 }
 
