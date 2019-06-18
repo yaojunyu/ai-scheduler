@@ -24,7 +24,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	sets "k8s.io/apimachinery/pkg/util/sets"
 	apiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -125,10 +124,8 @@ func (in *PoolSpec) DeepCopyInto(out *PoolSpec) {
 	}
 	if in.BorrowingPools != nil {
 		in, out := &in.BorrowingPools, &out.BorrowingPools
-		*out = make(sets.String, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 	return
 }
