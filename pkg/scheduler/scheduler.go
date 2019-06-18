@@ -494,12 +494,12 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 						klog.Errorf("Error get pool failed: %v", e)
 					} else {
 						if p.DisablePreemption() {
-							klog.V(3).Infof("Pool %v preemption disabled. No preemption is performed", poolName)
+							klog.V(3).Infof("Pool %q preemption disabled. No preemption is performed", poolName)
 						} else {
 							preemptionStartTime := time.Now()
 							nodeName, _, needBorrow = sched.preempt(poolName, pod, fitError)
 							if nodeName == "" {
-								klog.V(4).Infof("Preempt for %v/%v in pool %v not feasible or failed: %v", pod.Namespace, pod.Name, poolName, e)
+								klog.V(4).Infof("Preempt for %v/%v in pool %q not feasible or failed: %v", pod.Namespace, pod.Name, poolName, e)
 							}
 							metrics.PreemptionAttempts.Inc()
 							metrics.SchedulingAlgorithmPremptionEvaluationDuration.Observe(metrics.SinceInSeconds(preemptionStartTime))
@@ -647,11 +647,11 @@ func (sched *Scheduler) schedulePools() {
 }
 
 func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct{}) {
-	klog.V(3).Infof("Starting scheduling for pool %s", poolName)
+	klog.V(3).Infof("Starting scheduling for pool %q", poolName)
 	for {
 		select {
 		case <-stopCh:
-			klog.V(3).Infof("Stopping scheduling for pool %s", poolName)
+			klog.V(3).Infof("Stopping scheduling for pool %q", poolName)
 			return
 		default:
 		}
@@ -662,7 +662,7 @@ func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct
 			err = f(poolName)
 		}()
 		if err == queue.PriorityQueueClosedError || err == queue.PriorityQueueDeletedError {
-			klog.V(3).Infof("Stopping scheduling for pool %s as Pool Deleted", poolName)
+			klog.V(3).Infof("Stopping scheduling for pool %q as Pool Deleted", poolName)
 			return
 		}
 
@@ -673,7 +673,7 @@ func scheduleOnePool(f func(string) error, poolName string, stopCh <-chan struct
 		// of every loop to prevent extra executions of f().
 		select {
 		case <-stopCh:
-			klog.V(3).Infof("Stopping scheduling for pool %s", poolName)
+			klog.V(3).Infof("Stopping scheduling for pool %q", poolName)
 			return
 		default:
 		}

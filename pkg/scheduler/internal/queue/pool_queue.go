@@ -115,7 +115,7 @@ func (pq *PoolQueue) RemoveQueue(poolName string) {
 			if err := df.AddIfNotPresent(pod); err != nil {
 				klog.Errorf("Error move pod %v/%v to default pool queue failed: %v", pod.Namespace, pod.Name, err)
 			} else {
-				klog.V(4).Infof("moved pod %v/%v from pool queue %v to default pool queue", pod.Namespace, pod.Name, poolName)
+				klog.V(4).Infof("moved pod %v/%v from pool queue %q to default pool queue", pod.Namespace, pod.Name, poolName)
 			}
 		}
 	}
@@ -130,7 +130,7 @@ func (pq *PoolQueue) Add(pod *v1.Pod) error {
 	if err != nil {
 		return err
 	}
-	klog.V(4).Infof("Add pod %v/%v to pool queue '%v'", pod.Namespace, pod.Name, n)
+	klog.V(4).Infof("Add pod %v/%v to pool queue %q", pod.Namespace, pod.Name, n)
 	return q.Add(pod)
 }
 
@@ -142,7 +142,7 @@ func (pq *PoolQueue) AddIfNotPresent(pod *v1.Pod) error {
 	if err != nil {
 		return err
 	}
-	klog.V(4).Infof("AddIfNotPresent pod %v/%v to pool queue '%v'", pod.Namespace, pod.Name, n)
+	klog.V(4).Infof("AddIfNotPresent pod %v/%v to pool queue %q", pod.Namespace, pod.Name, n)
 	return q.AddIfNotPresent(pod)
 }
 
@@ -155,7 +155,7 @@ func (pq *PoolQueue) Delete(pod *v1.Pod) error {
 	for n, q := range pq.queues {
 		for _, p := range q.PendingPods() {
 			if p.UID == pod.UID {
-				klog.V(4).Infof("Delete pod %v/%v from pool queue '%v'", pod.Namespace, pod.Name, n)
+				klog.V(4).Infof("Delete pod %v/%v from pool queue %q", pod.Namespace, pod.Name, n)
 				return q.Delete(pod)
 			}
 		}
@@ -171,7 +171,7 @@ func (pq *PoolQueue) Update(oldPod, newPod *v1.Pod) error {
 	for n, q := range pq.queues {
 		for _, p := range q.PendingPods() {
 			if p.UID == newPod.UID {
-				klog.V(4).Infof("Update pod from %v/%v to %v/%v in pool queue '%v'",
+				klog.V(4).Infof("Update pod from %v/%v to %v/%v in pool queue %q",
 					oldPod.Namespace, oldPod.Name, newPod.Namespace, newPod.Name, n)
 				return q.Update(oldPod, newPod)
 			}
@@ -234,7 +234,7 @@ func (pq *PoolQueue) AssignedPodAdded(pod *v1.Pod) {
 	poolName := info.GetPodAnnotationsPoolName(pod)
 	q, _, err := pq.getPriorityQueue(poolName)
 	if err != nil {
-		klog.Errorf("Failed getting queue %v when AssignedPodAdded", poolName)
+		klog.Errorf("Failed getting queue %q when AssignedPodAdded", poolName)
 		return
 	}
 	q.AssignedPodAdded(pod)
@@ -246,7 +246,7 @@ func (pq *PoolQueue) AssignedPodUpdated(pod *v1.Pod) {
 	poolName := info.GetPodAnnotationsPoolName(pod)
 	q, _, err := pq.getPriorityQueue(poolName)
 	if err != nil {
-		klog.Errorf("Failed getting queue %v when AssignedPodUpdated", poolName)
+		klog.Errorf("Failed getting queue %q when AssignedPodUpdated", poolName)
 		return
 	}
 	q.AssignedPodUpdated(pod)
@@ -286,7 +286,7 @@ func (pq *PoolQueue) getPriorityQueue(poolName string) (SchedulingQueue, string,
 		return q, poolName, nil
 	}
 	// if not found return default queue
-	klog.Warningf("Warning: queue for pool %v not found, use default queue", poolName)
+	klog.Warningf("Warning: queue for pool %q not found, use default queue", poolName)
 	q, ok := pq.queues[info.DefaultPoolName]
 	if ok {
 		return q, info.DefaultPoolName, nil
@@ -356,9 +356,9 @@ func (pq *PoolQueue) MoveAllBorrowingPodsToSelfQueue(poolName string) {
 				selfQ = pq.queues[info.DefaultPoolName]
 			}
 			if err := selfQ.AddIfNotPresent(pod); err != nil {
-				klog.Errorf("move pod %v/%v from queue %v to self queue %v failed: %v", pod.Namespace, pod.Name, poolName, selfPoolName, err)
+				klog.Errorf("move pod %v/%v from queue %q to self queue %q failed: %v", pod.Namespace, pod.Name, poolName, selfPoolName, err)
 			} else {
-				klog.V(4).Infof("move pod %v/%v from queue %v to self queue %v succeed", pod.Namespace, pod.Name, poolName, selfPoolName)
+				klog.V(4).Infof("move pod %v/%v from queue %q to self queue %q succeed", pod.Namespace, pod.Name, poolName, selfPoolName)
 			}
 		}
 	}

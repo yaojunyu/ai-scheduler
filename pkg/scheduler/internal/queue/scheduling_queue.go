@@ -933,11 +933,11 @@ func MakeNextPodFunc(queues SchedulingPoolQueue, schedulerCache schedulerinterna
 
 		pod, err := q.Pop()
 		for err == nil {
-			klog.V(4).Infof("About to try and schedule pod %v/%v in pool queue %v", pod.Namespace, pod.Name, poolName)
+			klog.V(4).Infof("About to try and schedule pod %v/%v in pool queue %q", pod.Namespace, pod.Name, poolName)
 			return pod, err
 
 		}
-		klog.Warningf("Error while retrieving next pod from scheduling queue %v: %v", poolName, err)
+		klog.Warningf("Error while retrieving next pod from scheduling queue %q: %v", poolName, err)
 		return nil, err
 	}
 }
