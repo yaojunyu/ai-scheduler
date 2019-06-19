@@ -93,6 +93,10 @@ type SchedulingQueue interface {
 	DeleteNominatedPodIfExists(pod *v1.Pod)
 	// NumUnschedulablePods returns the number of unschedulable pods exist in the SchedulingQueue.
 	NumUnschedulablePods() int
+	// NumActivePods returns the number of active pods exist in the SchedulingQueue.
+	NumActivePods() int
+	// NumBackoffPods returns the number of backoff pods exist in the SchedulingQueue.
+	NumBackoffPods() int
 }
 
 // NewSchedulingQueue initializes a new scheduling queue. If pod priority is
@@ -202,6 +206,16 @@ func (f *FIFO) UpdateNominatedPodForNode(pod *v1.Pod, nodeName string) {}
 
 // NumUnschedulablePods returns the number of unschedulable pods exist in the SchedulingQueue.
 func (f *FIFO) NumUnschedulablePods() int {
+	return 0
+}
+
+// NumActivePods returns the number of active pods exist in the SchedulingQueue.
+func (f *FIFO) NumActivePods() int {
+	return 0
+}
+
+// NumBackoffPods returns the number of backoff pods exist in the SchedulingQueue.
+func (f *FIFO) NumBackoffPods() int {
 	return 0
 }
 
@@ -788,6 +802,20 @@ func (p *PriorityQueue) NumUnschedulablePods() int {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	return len(p.unschedulableQ.podInfoMap)
+}
+
+// NumActivePods returns the number of active pods exist in the SchedulingQueue.
+func (p *PriorityQueue) NumActivePods() int {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+	return p.activeQ.Len()
+}
+
+// NumBackoffPods returns the number of backoff pods exist in the SchedulingQueue.
+func (p *PriorityQueue) NumBackoffPods() int {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+	return p.podBackoffQ.Len()
 }
 
 // newPodInfo builds a podInfo object.

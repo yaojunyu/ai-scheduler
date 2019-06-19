@@ -384,6 +384,7 @@ func (pq *PoolQueue) HasSelfPoolPendingPods(poolName string) bool {
 func (pq *PoolQueue) Metrics() {
 	pq.lock.RLock()
 	defer pq.lock.RUnlock()
+	metrics.PoolQueueDetails.Reset()
 	for poolName, queue := range pq.queues {
 		if poolName == info.DefaultPoolName {
 			poolName = "default"
@@ -394,5 +395,9 @@ func (pq *PoolQueue) Metrics() {
 		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceMem, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.Memory))
 		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceEStorage, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.EphemeralStorage))
 		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourcePods, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.AllowedPodNumber))
+
+		metrics.PoolQueueDetails.With(prometheus.Labels{"pool": poolName, "type": metrics.PoolQueueTypeActive}).Set(float64(queue.NumActivePods()))
+		metrics.PoolQueueDetails.With(prometheus.Labels{"pool": poolName, "type": metrics.PoolQueueTypeUnschedule}).Set(float64(queue.NumUnschedulablePods()))
+		metrics.PoolQueueDetails.With(prometheus.Labels{"pool": poolName, "type": metrics.PoolQueueTypeBackoff}).Set(float64(queue.NumBackoffPods()))
 	}
 }

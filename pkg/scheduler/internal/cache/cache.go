@@ -1078,6 +1078,8 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 func (cache *schedulerCache) Metrics() {
 	cache.mu.RLock()
 	defer cache.mu.RUnlock()
+	metrics.PoolFeatures.Reset()
+	metrics.PoolNodes.Reset()
 	for poolName, poolInfo := range cache.pools {
 		if poolName == schedulerinfo.DefaultPoolName {
 			poolName = "default"
@@ -1123,5 +1125,11 @@ func (cache *schedulerCache) Metrics() {
 		metrics.PoolFeatures.With(prometheus.Labels{"pool": poolName, "feature": metrics.PoolFeaturePreemption}).Set(preemption)
 		metrics.PoolFeatures.With(prometheus.Labels{"pool": poolName, "feature": metrics.PoolFeatureBorrowing}).Set(borrowing)
 		metrics.PoolFeatures.With(prometheus.Labels{"pool": poolName, "feature": metrics.PoolFeatureSharing}).Set(sharing)
+
+		for _, nodeItem := range poolInfo.Nodes() {
+			if nodeItem.Info().Node() != nil {
+				metrics.PoolNodes.With(prometheus.Labels{"pool": poolName, "node": nodeItem.Info().Node().Name}).Set(1)
+			}
+		}
 	}
 }

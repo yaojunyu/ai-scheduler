@@ -46,7 +46,7 @@ const (
 	Binding = "binding"
 	// E2eScheduling - e2e scheduling operation label value
 
-	// Pool metrics
+	// Pool metrics labels
 	PoolResourceCpu           = "cpu"
 	PoolResourceGpu           = "gpu"
 	PoolResourceMem           = "memory"
@@ -61,6 +61,10 @@ const (
 	PoolFeaturePreemption     = "preemption"
 	PoolFeatureBorrowing      = "borrowing"
 	PoolFeatureSharing        = "sharing"
+	// Pool Queue metrics labels
+	PoolQueueTypeActive     = "active"
+	PoolQueueTypeUnschedule = "unschedule"
+	PoolQueueTypeBackoff    = "backoff"
 )
 
 var (
@@ -226,6 +230,18 @@ var (
 			Name:      "pool_features",
 			Help:      "Pool scheduling features",
 		}, []string{"pool", "feature"})
+	PoolNodes = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Subsystem: SchedulerSubsystem,
+			Name:      "pool_nodes",
+			Help:      "All nodes belong to pool",
+		}, []string{"pool", "node"})
+	PoolQueueDetails = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Subsystem: SchedulerSubsystem,
+			Name:      "pool_queue_details",
+			Help:      "Pool Queue details",
+		}, []string{"pool", "type"})
 
 	metricsList = []prometheus.Collector{
 		scheduleAttempts,
@@ -247,6 +263,8 @@ var (
 		PreemptionAttempts,
 		PoolResourceDetails,
 		PoolFeatures,
+		PoolNodes,
+		PoolQueueDetails,
 	}
 )
 
