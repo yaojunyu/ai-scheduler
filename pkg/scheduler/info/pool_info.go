@@ -384,7 +384,7 @@ func (p *PoolInfo) DisableBorrowing() bool {
 
 func (p *PoolInfo) DisablePreemption() bool {
 	if p == nil || p.pool == nil {
-		return false
+		return true
 	}
 	return p.pool.Spec.DisablePreemption
 }
