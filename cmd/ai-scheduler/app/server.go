@@ -225,9 +225,8 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 	// Wait for all caches to sync before scheduling.
 	cc.InformerFactory.WaitForCacheSync(stopCh)
 
-	controller.WaitForCacheSync("scheduler", stopCh, cc.PodInformer.Informer().HasSynced)
+	controller.WaitForCacheSync("ai-scheduler", stopCh, cc.PodInformer.Informer().HasSynced)
 
-	sched.PrintPools()
 	// Prepare a reusable runCommand function.
 	run := func(ctx context.Context) {
 		sched.Run()
