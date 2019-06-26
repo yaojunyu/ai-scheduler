@@ -10,10 +10,10 @@ restartPolicy: Always
 resources:
   limits:
     cpu: 4
-    memory: 4Gi
+    memory: 8Gi
   requests:
     cpu: 4
-    memory: 4Gi
+    memory: 8Gi
 
 securePort: 20888
 healthzPort: 20999
@@ -24,4 +24,10 @@ leaderElect: true
 leaseDuration: "15s"
 renewDeadline: "10s"
 retryPeriod: "2s"
+
+algorithmSource:
+  provider: "DefaultProvider"
+clientConnection:
+  burst: 1000
+  qps: 500
 

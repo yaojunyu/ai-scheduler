@@ -17,7 +17,7 @@ spec:
       app: {{ .Chart.Name }}
   strategy:
     rollingUpdate:
-      maxSurge: 1
+      maxSurge: 2
       maxUnavailable: 1
     type: RollingUpdate
   template:
