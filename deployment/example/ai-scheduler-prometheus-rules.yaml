@@ -8,91 +8,94 @@ metadata:
   namespace: monitoring
 spec:
   groups:
-  - name: ai-scheduler-alert
-    rules:
-    - alert: AiSchedulerDown
-      expr: count(up{job="ai-scheduler-metrics"} == 1) == 0
-      for: 3m
-      labels:
-        component: ai-scheduler
-        santaLdapGroup: project-ai-scheduler
-        santaAction: sms
-        severity: critical
-      annotations:
-        description: "Ai-Scheduler all instances Down!"
-    - alert: AiSchedulerLoseLeader
-      expr: count(leader_election_master_status{name="ai-scheduler"} == 1) == 0
-      for: 3m
-      labels:
-        component: ai-scheduler
-        santaLdapGroup: project-ai-scheduler
-        santaAction: sms
-        severity: critical
-      annotations:
-        description: "Ai-Scheduler Has not Leader!"
-    - alert: AiSchedulerBindingTooSlowly
-      expr: (max(rate(scheduler_binding_duration_seconds_sum{job="ai-scheduler-metrics"}[5m]) /
-        rate(scheduler_binding_duration_seconds_count{job="ai-scheduler-metrics"}[5m])) by (instance)) > 10
-      for: 3m
-      labels:
-        component: ai-scheduler
-        santaLdapGroup: project-ai-scheduler
-        santaAction: sms
-        severity: critical
-      annotations:
-        description: "Ai-Scheduler Binding Too Long!"
-        summary: 'Ai-Scheduler binding latency : {{ $value }}s'
-  - name: pool-resource
-    rules:
-    - expr: scheduler_pool_resource_details * on(instance) group_left
-        avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
-      record: ai:scheduler_pool_resource_details:master
-    - expr: scheduler_pool_features * on(instance) group_left
-        avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
-      record: ai:scheduler_pool_features:master
-    - expr: scheduler_pool_queue_details * on(instance) group_left
-        avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
-      record: ai:scheduler_pool_queue_details:master
-    - expr: scheduler_pool_nodes * on(instance) group_left
-        avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
-      record: ai:scheduler_pool_nodes:master
+    - name: ai-scheduler-alert
+      rules:
+        - alert: AiSchedulerDown
+          expr: count(up{job="ai-scheduler-metrics"} == 1) == 0
+          for: 3m
+          labels:
+            component: ai-scheduler
+            santaLdapGroup: project-aischeduler
+            santaAction: wechat
+            severity: critical
+          annotations:
+            description: "Ai-Scheduler all instances Down!"
+            summary: "Ai-Scheduler all instances Down!"
+        - alert: AiSchedulerLoseLeader
+          expr: count(leader_election_master_status{name="ai-scheduler"} == 1) == 0
+          for: 3m
+          labels:
+            component: ai-scheduler
+            santaLdapGroup: project-aischeduler
+            santaAction: wechat
+            severity: critical
+          annotations:
+            description: "Ai-Scheduler Has not Leader!"
+            summary: "Ai-Scheduler Has not Leader!"
+        - alert: AiSchedulerBindingTooSlowly
+          expr: (max(rate(scheduler_binding_duration_seconds_sum{job="ai-scheduler-metrics"}[5m]) /
+            rate(scheduler_binding_duration_seconds_count{job="ai-scheduler-metrics"}[5m])) by (instance)) > 10
+          for: 3m
+          labels:
+            component: ai-scheduler
+            santaLdapGroup: project-aischeduler
+            santaAction: wechat
+            severity: critical
+          annotations:
+            description: "Ai-Scheduler Binding Too Long!"
+            summary: 'Ai-Scheduler Binding Too Long! Ai-Scheduler binding latency : {{ $value }}s'
+    - name: pool-resource
+      rules:
+        - expr: scheduler_pool_resource_details * on(instance) group_left
+            avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
+          record: ai:scheduler_pool_resource_details:master
+        - expr: scheduler_pool_features * on(instance) group_left
+            avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
+          record: ai:scheduler_pool_features:master
+        - expr: scheduler_pool_queue_details * on(instance) group_left
+            avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
+          record: ai:scheduler_pool_queue_details:master
+        - expr: scheduler_pool_nodes * on(instance) group_left
+            avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
+          record: ai:scheduler_pool_nodes:master
 
-    - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
-        count(label_join(nvidia_gpu_duty_cycle>0, "node", "", "node_name")) by (node)) by (pool)
-      record: ai:pool:nvidia_gpu_duty_cycle:count:sum
-    - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
-        sum(rate(container_cpu_usage_seconds_total[1m])) by (node)) by (pool)
-      record: ai:pool:container_cpu_usage_seconds_total:rate1m:sum
-    - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
-        sum(container_memory_usage_bytes) by (node)) by (pool)
-      record: ai:pool:container_memory_usage_bytes:sum
+        - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
+            count(label_join(nvidia_gpu_duty_cycle>0, "node", "", "node_name")) by (node)) by (pool)
+          record: ai:pool:nvidia_gpu_duty_cycle:count:sum
+        - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
+            sum(rate(container_cpu_usage_seconds_total[1m])) by (node)) by (pool)
+          record: ai:pool:container_cpu_usage_seconds_total:rate1m:sum
+        - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
+            sum(container_memory_usage_bytes) by (node)) by (pool)
+          record: ai:pool:container_memory_usage_bytes:sum
 
-    - expr: sum(ai:scheduler_pool_resource_details:master{type="used"}) by (pool, resource) /
-        sum(ai:scheduler_pool_resource_details:master{type="allocatable"}) by (pool, resource)
-      record: ai:pool:resource_usage
-    - expr: sum(ai:scheduler_pool_resource_details:master{type="used"}) by (resource) /
-        sum(ai:scheduler_pool_resource_details:master{type="allocatable"}) by (resource)
-      record: ai:cluster:resource_usage
-    - expr: sum(ai:pool:container_cpu_usage_seconds_total:rate1m:sum) /
-        (sum(ai:scheduler_pool_resource_details:master{resource="cpu", type="used"}) / 1000)
-      record: ai:cluster:cpu_utilization
-    - expr: sum(ai:pool:nvidia_gpu_duty_cycle:count:sum) /
-        sum(ai:scheduler_pool_resource_details:master{resource="gpu", type="used"})
-      record: ai:cluster:gpu_utilization
-    - expr: sum(ai:pool:container_memory_usage_bytes:sum) /
-        sum(ai:scheduler_pool_resource_details:master{resource="memory", type="used"})
-      record: ai:cluster:memory_utilization
+        - expr: sum(ai:scheduler_pool_resource_details:master{type="used"}) by (pool, resource) /
+            sum(ai:scheduler_pool_resource_details:master{type="allocatable"}) by (pool, resource)
+          record: ai:pool:resource_usage
+        - expr: sum(ai:scheduler_pool_resource_details:master{type="used"}) by (resource) /
+            sum(ai:scheduler_pool_resource_details:master{type="allocatable"}) by (resource)
+          record: ai:cluster:resource_usage
+        - expr: sum(ai:pool:container_cpu_usage_seconds_total:rate1m:sum) /
+            (sum(ai:scheduler_pool_resource_details:master{resource="cpu", type="used"}) / 1000)
+          record: ai:cluster:cpu_utilization
+        - expr: sum(ai:pool:nvidia_gpu_duty_cycle:count:sum) /
+            sum(ai:scheduler_pool_resource_details:master{resource="gpu", type="used"})
+          record: ai:cluster:gpu_utilization
+        - expr: sum(ai:pool:container_memory_usage_bytes:sum) /
+            sum(ai:scheduler_pool_resource_details:master{resource="memory", type="used"})
+          record: ai:cluster:memory_utilization
 
-    - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
-        count(label_join(nvidia_gpu_duty_cycle>0, "node", "", "node_name")) by (node)) by (pool) /
-        sum(ai:scheduler_pool_resource_details:master{resource="gpu", type="used"}) by (pool)
-      record: ai:pool:container_gpu_utilization
-    - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
-        sum(rate(container_cpu_usage_seconds_total[1m])) by (node)) by (pool) /
-        (sum(ai:scheduler_pool_resource_details:master{resource="cpu", type="used"}) by (pool) / 1000)
-      record: ai:pool:container_cpu_utilization
-    - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
-        sum(container_memory_usage_bytes) by (node)) by (pool) /
-        sum(ai:scheduler_pool_resource_details:master{resource="memory", type="used"}) by (pool)
-      record: ai:pool:container_memory_utilization
+        - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
+            count(label_join(nvidia_gpu_duty_cycle>0, "node", "", "node_name")) by (node)) by (pool) /
+            sum(ai:scheduler_pool_resource_details:master{resource="gpu", type="used"}) by (pool)
+          record: ai:pool:container_gpu_utilization
+        - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
+            sum(rate(container_cpu_usage_seconds_total[1m])) by (node)) by (pool) /
+            (sum(ai:scheduler_pool_resource_details:master{resource="cpu", type="used"}) by (pool) / 1000)
+          record: ai:pool:container_cpu_utilization
+        - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
+            sum(container_memory_usage_bytes) by (node)) by (pool) /
+            sum(ai:scheduler_pool_resource_details:master{resource="memory", type="used"}) by (pool)
+          record: ai:pool:container_memory_utilization
+
 
