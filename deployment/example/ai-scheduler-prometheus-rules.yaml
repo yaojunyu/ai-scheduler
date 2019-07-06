@@ -44,6 +44,7 @@ spec:
           annotations:
             description: "Ai-Scheduler Binding Too Long!"
             summary: 'Ai-Scheduler Binding Too Long! Ai-Scheduler binding latency : {{ $value }}s'
+
     - name: pool-resource
       rules:
         - expr: scheduler_pool_resource_details * on(instance) group_left
@@ -97,5 +98,153 @@ spec:
             sum(container_memory_usage_bytes) by (node)) by (pool) /
             sum(ai:scheduler_pool_resource_details:master{resource="memory", type="used"}) by (pool)
           record: ai:pool:container_memory_utilization
+
+    - name: customer-resource
+      rules:
+        - expr: label_replace(container_spec_cpu_shares{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "customer", "$1", "pod_name", "^[^-]+-([^-]+)-.*")
+          record: ai:customer:container_spec_cpu_shares
+        - expr: sum(ai:customer:container_spec_cpu_shares) by (customer)
+          record: ai:customer:container_spec_cpu_shares:sum
+        - expr: label_replace(rate(container_cpu_usage_seconds_total{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[1m]), "customer", "$1", "pod_name", "^[^-]+-([^-]+)-.*")
+          record: ai:customer:container_cpu_usage_seconds_total:rate
+        - expr: sum(ai:customer:container_cpu_usage_seconds_total:rate) by (customer)
+          record: ai:customer:container_cpu_usage_seconds_total:rate:sum
+        - expr: label_replace(container_spec_cpu_quota{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*", container!="POD"},
+            "customer", "$1", "pod_name", "^[^-]+-([^-]+)-.*")
+          record: ai:customer:container_spec_cpu_quota
+        - expr: sum(ai:customer:container_spec_cpu_quota) by (customer)
+          record: ai:customer:container_spec_cpu_quota:sum
+
+        - expr: label_replace(container_accelerator_duty_cycle{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            namespace!~"monitoring|nvidia-device-plugin|kube-.*", container!="POD"}, "customer", "$1", "pod_name", "^[^-]+-([^-]+)-.*")
+          record: ai:customer:container_accelerator_duty_cycle
+        - expr: sum(ai:customer:container_accelerator_duty_cycle) by (customer)
+          record: ai:customer:container_accelerator_duty_cycle:sum
+        - expr: count(ai:customer:container_accelerator_duty_cycle) by (customer)
+          record: ai:customer:container_accelerator_duty_cycle:count
+
+        - expr: label_replace(container_spec_memory_limit_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "customer", "$1", "pod_name", "^[^-]+-([^-]+)-.*")
+          record: ai:customer:container_spec_memory_limit_bytes
+        - expr: sum(ai:customer:container_spec_memory_limit_bytes) by (customer)
+          record: ai:customer:container_spec_memory_limit_bytes:sum
+        - expr: label_replace(sum_over_time(container_memory_usage_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[10m]), "customer", "$1", "pod_name", "^[^-]+-([^-]+)-.*")
+          record: ai:customer:container_memory_usage_bytes:sum_over_time10m
+        - expr: sum(ai:customer:container_memory_usage_bytes:sum_over_time) by (customer)
+          record: ai:customer:container_memory_usage_bytes:sum_over_time10m:sum
+        - expr: label_replace(sum_over_time(container_spec_memory_limit_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[10m]), "customer", "$1", "pod_name", "^[^-]+-([^-]+)-.*")
+          record: ai:customer:container_spec_memory_limit_bytes:sum_over_time10m
+        - expr: sum(ai:customer:container_spec_memory_limit_bytes:sum_over_time10m) by (customer)
+          record: ai:customer:container_spec_memory_limit_bytes:sum_over_time10m:sum
+
+        - expr: ai:customer:container_cpu_usage_seconds_total:rate:sum / (ai:customer:container_spec_cpu_quota:sum / 100000)
+          record: ai:customer:cpu_utilization
+        - expr: (ai:customer:container_accelerator_duty_cycle:sum / 100) / ai:customer:container_accelerator_duty_cycle:count
+          record: ai:customer:gpu_utilization
+        - expr: ai:customer:container_memory_usage_bytes:sum_over_time10m:sum / ai:customer:container_spec_memory_limit_bytes:sum_over_time10m:sum
+          record: ai:customer:memory_utilization
+
+    - name: workflow-resource
+      rules:
+        - expr: label_replace(container_spec_cpu_shares{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "workflow", "$1", "pod_name", "^([^-]+)-.*")
+          record: ai:workflow:container_spec_cpu_shares
+        - expr: sum(ai:workflow:container_spec_cpu_shares) by (workflow)
+          record: ai:workflow:container_spec_cpu_shares:sum
+        - expr: label_replace(rate(container_cpu_usage_seconds_total{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[1m]), "workflow", "$1", "pod_name", "^([^-]+)-.*")
+          record: ai:workflow:container_cpu_usage_seconds_total:rate
+        - expr: sum(ai:workflow:container_cpu_usage_seconds_total:rate) by (workflow)
+          record: ai:workflow:container_cpu_usage_seconds_total:rate:sum
+        - expr: label_replace(container_spec_cpu_quota{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "workflow", "$1", "pod_name", "^([^-]+)-.*")
+          record: ai:workflow:container_spec_cpu_quota
+        - expr: sum(ai:workflow:container_spec_cpu_quota) by (workflow)
+          record: ai:workflow:container_spec_cpu_quota:sum
+        - expr: label_replace(container_spec_memory_limit_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "workflow", "$1", "pod_name", "^([^-]+)-.*")
+          record: ai:workflow:container_spec_memory_limit_bytes
+        - expr: sum(ai:workflow:container_spec_memory_limit_bytes) by (workflow)
+          record: ai:workflow:container_spec_memory_limit_bytes:sum
+        - expr: label_replace(sum_over_time(container_memory_usage_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[10m]), "workflow", "$1", "pod_name", "^[^-]+-([^-]+-[^-]+-[^-]+)-.*")
+          record: ai:workflow:container_memory_usage_bytes:sum_over_time10m
+        - expr: sum(ai:workflow:container_memory_usage_bytes:sum_over_time10m) by (workflow)
+          record: ai:workflow:container_memory_usage_bytes:sum_over_time10m:sum
+        - expr: label_replace(sum_over_time(container_spec_memory_limit_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[10m]), "workflow", "$1", "pod_name", "^[^-]+-([^-]+-[^-]+-[^-]+)-.*")
+          record: ai:workflow:container_spec_memory_limit_bytes:sum_over_time10m
+        - expr: sum(ai:workflow:container_spec_memory_limit_bytes:sum_over_time10m) by (workflow)
+          record: ai:workflow:container_spec_memory_limit_bytes:sum_over_time10m:sum
+        - expr: label_replace(container_accelerator_duty_cycle{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD", namespace!~"monitoring|nvidia-device-plugin|kube-*"}, "workflow", "$1", "pod_name", "^([^-]+)-.*")
+          record: ai:workflow:container_accelerator_duty_cycle
+        - expr: count(ai:workflow:container_accelerator_duty_cycle) by (workflow)
+          record: ai:workflow:container_accelerator_duty_cycle:count
+        - expr: sum(ai:workflow:container_accelerator_duty_cycle) by (workflow)
+          record: ai:workflow:container_accelerator_duty_cycle:sum
+
+        - expr: ai:workflow:container_memory_usage_bytes:sum_over_time10m:sum / ai:workflow:container_spec_memory_limit_bytes:sum_over_time10m:sum
+          record: ai:workflow:memory_utilization
+        - expr: ai:workflow:container_cpu_usage_seconds_total:rate:sum / (ai:workflow:container_spec_cpu_quota:sum / 100000)
+          record: ai:workflow:cpu_utilization
+        - expr: (ai:workflow:container_accelerator_duty_cycle:sum / 100) /  ai:workflow:container_accelerator_duty_cycle:count
+          record: ai:workflow:gpu_utilization
+
+    - name: task-resource
+      rules:
+        - expr: label_replace(container_spec_cpu_shares{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_spec_cpu_shares
+        - expr: sum(ai:task:container_spec_cpu_shares) by (task)
+          record: ai:task:container_spec_cpu_shares:sum
+        - expr: label_replace(rate(container_cpu_usage_seconds_total{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[1m]), "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_cpu_usage_seconds_total:rate
+        - expr: sum(ai:task:container_cpu_usage_seconds_total:rate) by (task)
+          record: ai:task:container_cpu_usage_seconds_total:rate:sum
+        - expr: label_replace(container_spec_cpu_quota{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_spec_cpu_quota
+        - expr: sum(ai:task:container_spec_cpu_quota) by (task)
+          record: ai:task:container_spec_cpu_quota:sum
+        - expr: label_replace(container_accelerator_duty_cycle{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD", namespace!~"monitoring|nvidia-device-plugin|kube-*"}, "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_accelerator_duty_cycle
+        - expr: count(ai:task:container_accelerator_duty_cycle) by (task)
+          record: ai:task:container_accelerator_duty_cycle:count
+        - expr: sum(ai:task:container_accelerator_duty_cycle) by (task)
+          record: ai:task:container_accelerator_duty_cycle:sum
+        - expr: label_replace(container_spec_memory_limit_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_spec_memory_limit_bytes
+        - expr: sum(ai:task:container_spec_memory_limit_bytes) by (task)
+          record: ai:task:container_spec_memory_limit_bytes:sum
+        - expr: label_replace(container_memory_usage_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}, "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_memory_usage_bytes
+        - expr: label_replace(sum_over_time(container_memory_usage_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[10m]), "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_memory_usage_bytes:sum_over_time10m
+        - expr: sum(ai:task:container_memory_usage_bytes:sum_over_time10m) by (task)
+          record: ai:task:container_memory_usage_bytes:sum_over_time10m:sum
+        - expr: label_replace(sum_over_time(container_spec_memory_limit_bytes{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*",
+            container!="POD"}[10m]), "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:container_spec_memory_limit_bytes:sum_over_time10m
+        - expr: sum(ai:task:container_spec_memory_limit_bytes:sum_over_time10m) by (task)
+          record: ai:task:container_spec_memory_limit_bytes:sum_over_time10m:sum
+
+        - expr: ai:task:container_cpu_usage_seconds_total:rate:sum / (ai:task:container_spec_cpu_quota:sum / 100000)
+          record: ai:task:cpu_utilization
+        - expr: (ai:task:container_accelerator_duty_cycle:sum / 100) / ai:task:container_accelerator_duty_cycle:count
+          record: ai:task:gpu_utilization
+        - expr: ai:task:container_memory_usage_bytes:sum_over_time10m:sum / ai:task:container_spec_memory_limit_bytes:sum_over_time10m:sum
+          record: ai:task:memory_utilization
+
+
 
 
