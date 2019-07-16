@@ -44,8 +44,8 @@ generated_files: gen_deepcopy gen_defaulter gen_conversion gen_openapi gen_binda
 # This is a file that will be emitted by the go2make tool, containing a
 # variable for each Go package in the project (including deps) which lists all
 # of the transitive deps of that package.  Each variable is named the same as
-# the package - for example the variable for `k8s.io/kubernetes/pkg/api` is
-# $(k8s.io/kubernetes/pkg/api).  This is roughly the same DAG that the Go
+# the package - for example the variable for `gitlab.aibee.cn/platform/ai-scheduler/pkg/api` is
+# $(gitlab.aibee.cn/platform/ai-scheduler/pkg/api).  This is roughly the same DAG that the Go
 # compiler uses.  These variables can be used to figure out if, for example,
 # generated code needs to be regenerated.
 GO_PKGDEPS_FILE = go-pkgdeps.mk
@@ -65,10 +65,6 @@ $(META_DIR)/$(GO_PKGDEPS_FILE): FORCE
 	fi
 	hack/run-in-gopath.sh go install ./hack/make-rules/helpers/go2make
 	hack/run-in-gopath.sh go2make                     \
-	    k8s.io/kubernetes/...                         \
-	    --prune  k8s.io/kubernetes/staging            \
-	    --prune  k8s.io/kubernetes/vendor             \
-	    k8s.io/kubernetes/vendor/k8s.io/...           \
 	    github.com/jteeuwen/go-bindata/go-bindata/... \
 	    > $@.tmp
 	if ! cmp -s $@.tmp $@; then                       \
@@ -196,7 +192,7 @@ $(DEEPCOPY_FILES): $(DEEPCOPY_GEN)
 # have to be rebuilt.  In that case, make will forever see the dependency as
 # newer than the binary, and try to "rebuild" it over and over.  So we touch
 # it, and make is happy.
-$(DEEPCOPY_GEN): $(k8s.io/kubernetes/vendor/k8s.io/code-generator/cmd/deepcopy-gen)
+$(DEEPCOPY_GEN): $(gitlab.aibee.cn/platform/ai-scheduler/vendor/k8s.io/code-generator/cmd/deepcopy-gen)
 	KUBE_BUILD_PLATFORMS="" hack/make-rules/build.sh ./vendor/k8s.io/code-generator/cmd/deepcopy-gen
 	touch $@
 
@@ -290,7 +286,7 @@ $(DEFAULTER_FILES): $(DEFAULTER_GEN)
 # have to be rebuilt.  In that case, make will forever see the dependency as
 # newer than the binary, and try to "rebuild" it over and over.  So we touch
 # it, and make is happy.
-$(DEFAULTER_GEN): $(k8s.io/kubernetes/vendor/k8s.io/code-generator/cmd/defaulter-gen)
+$(DEFAULTER_GEN): $(gitlab.aibee.cn/platform/ai-scheduler/vendor/k8s.io/code-generator/cmd/defaulter-gen)
 	KUBE_BUILD_PLATFORMS="" hack/make-rules/build.sh ./vendor/k8s.io/code-generator/cmd/defaulter-gen
 	touch $@
 
@@ -339,7 +335,7 @@ CONVERSION_DIRS := $(shell                                              \
 )
 
 CONVERSION_FILES := $(addsuffix /$(CONVERSION_FILENAME), $(CONVERSION_DIRS))
-CONVERSION_EXTRA_PEER_DIRS := k8s.io/kubernetes/pkg/apis/core,k8s.io/kubernetes/pkg/apis/core/v1,k8s.io/api/core/v1
+#CONVERSION_EXTRA_PEER_DIRS := gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/core,gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/core/v1,k8s.io/api/core/v1
 
 # Reset the list of packages that need generation.
 $(shell mkdir -p $$(dirname $(META_DIR)/$(CONVERSION_GEN)))
@@ -355,7 +351,6 @@ gen_conversion: $(CONVERSION_GEN) $(META_DIR)/$(CONVERSION_GEN).todo
 	        echo "DBG: running $(CONVERSION_GEN) for $$pkgs";            \
 	    fi;                                                              \
 	    ./hack/run-in-gopath.sh $(CONVERSION_GEN)                        \
-	        --extra-peer-dirs $(CONVERSION_EXTRA_PEER_DIRS)              \
 	        --v $(KUBE_VERBOSE)                                          \
 	        --logtostderr                                                \
 	        -i "$$pkgs"                                                  \
@@ -394,7 +389,7 @@ $(CONVERSION_FILES): $(CONVERSION_GEN)
 # have to be rebuilt.  In that case, make will forever see the dependency as
 # newer than the binary, and try to rebuild it over and over.  So we touch it,
 # and make is happy.
-$(CONVERSION_GEN): $(k8s.io/kubernetes/vendor/k8s.io/code-generator/cmd/conversion-gen)
+$(CONVERSION_GEN): $(gitlab.aibee.cn/platform/ai-scheduler/vendor/k8s.io/code-generator/cmd/conversion-gen)
 	KUBE_BUILD_PLATFORMS="" hack/make-rules/build.sh ./vendor/k8s.io/code-generator/cmd/conversion-gen
 	touch $@
 
@@ -493,7 +488,7 @@ $(CRD_OPENAPI_OUTFILE): $(OPENAPI_GEN)
 # have to be rebuilt.  In that case, make will forever see the dependency as
 # newer than the binary, and try to "rebuild" it over and over.  So we touch
 # it, and make is happy.
-$(OPENAPI_GEN): $(k8s.io/kubernetes/vendor/k8s.io/kube-openapi/cmd/openapi-gen)
+$(OPENAPI_GEN): $(gitlab.aibee.cn/platform/ai-scheduler/vendor/k8s.io/kube-openapi/cmd/openapi-gen)
 	KUBE_BUILD_PLATFORMS="" hack/make-rules/build.sh ./vendor/k8s.io/kube-openapi/cmd/openapi-gen
 	touch $@
 
@@ -522,6 +517,6 @@ gen_bindata: $(BINDATA_GEN) FORCE
 # have to be rebuilt.  In that case, make will forever see the dependency as
 # newer than the binary, and try to rebuild it over and over.  So we touch it,
 # and make is happy.
-$(BINDATA_GEN): $(k8s.io/kubernetes/vendor/github.com/jteeuwen/go-bindata/go-bindata)
+$(BINDATA_GEN): $(gitlab.aibee.cn/platform/ai-scheduler/vendor/github.com/jteeuwen/go-bindata/go-bindata)
 	KUBE_BUILD_PLATFORMS="" hack/make-rules/build.sh ./vendor/github.com/jteeuwen/go-bindata/go-bindata
 	touch $@

@@ -54,7 +54,7 @@ if ! diff -u "${failure_file}" <(LC_ALL=C sort "${failure_file}"); then
 fi
 
 export IFS=$'\n'
-# NOTE: when "go list -e ./..." is run within GOPATH, it turns the k8s.io/kubernetes
+# NOTE: when "go list -e ./..." is run within GOPATH, it turns the gitlab.aibee.cn/platform/ai-scheduler
 # as the prefix, however if we run it outside it returns the full path of the file
 # with a leading underscore. We'll need to support both scenarios for all_packages.
 all_packages=(

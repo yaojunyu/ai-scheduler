@@ -8,7 +8,7 @@ go_library(
         "go2make.go",
         "pkgwalk.go",
     ],
-    importpath = "k8s.io/kubernetes/hack/make-rules/helpers/go2make",
+    importpath = "gitlab.aibee.cn/platform/ai-scheduler/hack/make-rules/helpers/go2make",
     visibility = ["//visibility:private"],
     deps = ["//vendor/github.com/spf13/pflag:go_default_library"],
 )

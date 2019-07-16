@@ -31,6 +31,8 @@ required = [
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/deepcopy-gen",
   "k8s.io/code-generator/cmd/defaulter-gen",
+  "github.com/coreos/etcd",
+  "github.com/jteeuwen/go-bindata/go-bindata",
 ]
 
 [prune]
@@ -41,6 +43,9 @@ required = [
     unused-packages = false
   [[prune.project]]
     name = "k8s.io/code-generator"
+    unused-packages = false
+  [[prune.project]]
+    name = "k8s.io/kube-openapi"
     unused-packages = false
 
 [[constraint]]

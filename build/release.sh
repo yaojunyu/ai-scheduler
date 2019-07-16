@@ -32,8 +32,11 @@ source "${KUBE_ROOT}/build/lib/release.sh"
 KUBE_RELEASE_RUN_TESTS=${KUBE_RELEASE_RUN_TESTS-y}
 
 kube::build::verify_prereqs
+echo "==kube::build::verify_prereqs"
 kube::build::build_image
+echo "==kube::build::build_image"
 kube::build::run_build_command make cross
+echo "==kube::build::run_build_command make cross"
 
 if [[ $KUBE_RELEASE_RUN_TESTS =~ ^[yY]$ ]]; then
   kube::build::run_build_command make test
@@ -41,5 +44,7 @@ if [[ $KUBE_RELEASE_RUN_TESTS =~ ^[yY]$ ]]; then
 fi
 
 kube::build::copy_output
+echo "kube::build::copy_output"
 
 kube::release::package_tarballs
+echo "kube::release::package_tarballs"

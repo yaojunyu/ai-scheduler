@@ -1,6 +1,6 @@
 # Scripts runnable from make, e.g.
 #
-#    cd $GOPATH/src/k8s.io/kubernetes
+#    cd $GOPATH/src/gitlab.aibee.cn/platform/ai-scheduler
 #    make test-e2e-node
 #
 # The sh_binary rules below exist only to validate

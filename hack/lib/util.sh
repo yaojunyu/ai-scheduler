@@ -326,7 +326,7 @@ kube::util::gv-to-swagger-name() {
 # repo, e.g. "upstream" or "origin".
 kube::util::git_upstream_remote_name() {
   git remote -v | grep fetch |\
-    grep -E 'github.com[/:]kubernetes/kubernetes|k8s.io/kubernetes' |\
+    grep -E 'gitlab.aibee.cn[/:]platform/ai-scheduler|gitlab.aibee.cn/platform/ai-scheduler' |\
     head -n 1 | awk '{print $1}'
 }
 
@@ -421,7 +421,7 @@ kube::util::ensure_godep_version() {
 
   # Otherwise, install forked godep
   kube::log::status "Installing godep version ${godep_target_version}"
-  GOBIN="${KUBE_OUTPUT_BINPATH}" go install k8s.io/kubernetes/third_party/forked/godep
+  GOBIN="${KUBE_OUTPUT_BINPATH}" go install gitlab.aibee.cn/platform/ai-scheduler/third_party/forked/godep
   export KUBE_GODEP="${KUBE_OUTPUT_BINPATH}/godep"
   kube::log::status "Installed ${KUBE_GODEP}"
 

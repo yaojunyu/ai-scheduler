@@ -25,7 +25,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ./vendor/k8s.io/code-ge
 
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
-#                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
+#                  gitlab.aibee.cn/platform/ai-scheduler. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   gitlab.aibee.cn/platform/ai-scheduler/pkg/client gitlab.aibee.cn/platform/ai-scheduler/pkg/apis \
