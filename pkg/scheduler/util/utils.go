@@ -20,7 +20,6 @@ import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"sort"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
@@ -115,22 +114,6 @@ func SelfPoolHasHigherPriorityFunc(poolName string) LessFunc {
 		return GetPodPriority(p1) > GetPodPriority(p2)
 	}
 	return selfPoolHasHigherPriority
-}
-
-// GetPoolResourceQuota return quota of the given pool and resource name.
-func GetPoolResourceQuota(pool *v1alpha1.Pool, name v1.ResourceName) int64 {
-	if pool == nil && name == "" {
-		return 0
-	}
-	if _, ok := pool.Spec.Quota[name]; ok {
-		quota := pool.Spec.Quota[name]
-		if name == v1.ResourceCPU {
-			return quota.MilliValue()
-		} else {
-			return quota.Value()
-		}
-	}
-	return 0
 }
 
 // responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.

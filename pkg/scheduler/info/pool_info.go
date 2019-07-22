@@ -275,35 +275,6 @@ func (p *PoolInfo) ClearPool() {
 	return
 }
 
-func (p *PoolInfo) GetPoolWeight() map[v1.ResourceName]int32 {
-	if p == nil || p.pool == nil {
-		return nil
-	}
-	return p.pool.Spec.Weight
-}
-
-func (p *PoolInfo) GetQuota() v1.ResourceList {
-	if p == nil || p.pool == nil {
-		return nil
-	}
-	return p.pool.Spec.Quota
-}
-
-func (p *PoolInfo) GetQuotaValue(name v1.ResourceName) int64 {
-	if p == nil || p.pool == nil || name == "" {
-		return 0
-	}
-	quota, ok := p.pool.Spec.Quota[name]
-	if !ok {
-		return 0
-	}
-	if name == v1.ResourceCPU {
-		return quota.MilliValue()
-	} else {
-		return quota.Value()
-	}
-}
-
 func (p *PoolInfo) NumNodes() int {
 	if p == nil {
 		return 0
@@ -466,49 +437,12 @@ func (p *PoolInfo) IsDefaultPool() bool {
 	return p.Name() == DefaultPoolName
 }
 
-func (p *PoolInfo) Weighted(name v1.ResourceName) bool {
-	if p == nil || p.pool == nil || p.pool.Spec.Weight == nil {
-		return false
-	}
-	_, ok := p.pool.Spec.Weight[name]
-
-	return ok
-}
-
-func (p *PoolInfo) HasQuota(name v1.ResourceName) bool {
-	if p == nil || p.pool == nil || p.pool.Spec.Quota == nil {
-		return false
-	}
-
-	_, ok := p.pool.Spec.Quota[name]
-	return ok
-}
-
-func (p *PoolInfo) NeedMatchNodes(name v1.ResourceName) bool {
-	if p == nil || p.pool == nil {
-		return false
-	}
-
-	return p.pool.Spec.NodeSelector != nil ||
-		(p.pool.Spec.SupportResources != nil &&
-			len(p.pool.Spec.SupportResources) > 0)
-}
-
 func (p *PoolInfo) NeedMatchNodeLabel() bool {
 	if p == nil || p.pool == nil {
 		return false
 	}
 
 	return p.pool.Spec.NodeSelector != nil
-}
-
-func (p *PoolInfo) NeedMatchNodeResource(name v1.ResourceName) bool {
-	if p == nil || p.pool == nil {
-		return false
-	}
-
-	return p.pool.Spec.SupportResources != nil &&
-		len(p.pool.Spec.SupportResources) > 0
 }
 
 // newNodeInfoListItem initializes a new nodeInfoListItem.

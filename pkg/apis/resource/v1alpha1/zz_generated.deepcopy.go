@@ -21,7 +21,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	apiv1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -95,32 +94,6 @@ func (in *PoolSpec) DeepCopyInto(out *PoolSpec) {
 		in, out := &in.NodeSelector, &out.NodeSelector
 		*out = new(v1.LabelSelector)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.SupportResources != nil {
-		in, out := &in.SupportResources, &out.SupportResources
-		*out = make([]corev1.ResourceName, len(*in))
-		copy(*out, *in)
-	}
-	if in.Weight != nil {
-		in, out := &in.Weight, &out.Weight
-		*out = make(map[corev1.ResourceName]int32, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Quota != nil {
-		in, out := &in.Quota, &out.Quota
-		*out = make(corev1.ResourceList, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val.DeepCopy()
-		}
-	}
-	if in.Scores != nil {
-		in, out := &in.Scores, &out.Scores
-		*out = make([]apiv1.PriorityPolicy, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
 	}
 	if in.BorrowingPools != nil {
 		in, out := &in.BorrowingPools, &out.BorrowingPools

@@ -459,18 +459,12 @@ func PoolResourcePropertiesChanged(oldPool, newPool *v1alpha1.Pool) bool {
 	if poolNodeSelectorChanged(oldPool, newPool) {
 		return true
 	}
-	if poolSupportResourcesChanged(oldPool, newPool) {
-		return true
-	}
 	return false
 }
 func poolNodeSelectorChanged(oldPool, newPool *v1alpha1.Pool) bool {
 	return !reflect.DeepEqual(oldPool.Spec.NodeSelector, newPool.Spec.NodeSelector)
 }
 
-func poolSupportResourcesChanged(oldPool, newPool *v1alpha1.Pool) bool {
-	return !reflect.DeepEqual(oldPool.Spec.SupportResources, newPool.Spec.SupportResources)
-}
 
 func (cache *schedulerCache) RemovePool(pool *v1alpha1.Pool) error {
 	if pool.Name == "" {
@@ -833,16 +827,6 @@ func (cache *schedulerCache) DeserveAllPools() error {
 	return nil
 }
 
-func (cache *schedulerCache) calculateTotalQuota() *schedulerinfo.Resource {
-	var totalQuota = &schedulerinfo.Resource{}
-	for _, p := range cache.pools {
-		totalQuota.Add(p.GetQuota())
-		//p.SetAllocatable(&schedulerinfo.Resource{})
-	}
-
-	return totalQuota
-}
-
 func (cache *schedulerCache) calculateTotalResource() *schedulerinfo.Resource {
 	total := &schedulerinfo.Resource{}
 	for _, node := range cache.nodes() {
@@ -850,127 +834,6 @@ func (cache *schedulerCache) calculateTotalResource() *schedulerinfo.Resource {
 		total.Plus(&rs)
 	}
 	return total
-}
-
-func (cache *schedulerCache) calculateTotalWeights(resNames []v1.ResourceName) map[v1.ResourceName]int32 {
-	var totalWeight = make(map[v1.ResourceName]int32)
-	for _, rn := range resNames {
-		totalWeight[rn] = 0
-	}
-	for _, p := range cache.pools {
-		//if p.IsDefaultPool() {
-		//	continue
-		//}
-		pw := p.GetPoolWeight()
-		for n, w := range pw {
-			if w < 0 {
-				klog.Errorf("Error pool %v's resource %v weight cant less 0, now set 0", p, n)
-			} else {
-				// skip weight of pool that has quota
-				if !p.HasQuota(n) {
-					totalWeight[n] += w
-				}
-			}
-		}
-	}
-	return totalWeight
-}
-
-func (cache *schedulerCache) calculateRatio(p *schedulerinfo.PoolInfo, rn v1.ResourceName, totalWeight int32) float64 {
-	var ratio = float64(0)
-	if totalWeight <= 0 {
-		// avg
-		count := cache.weightedPoolsSize(rn)
-		if count > 0 {
-			ratio = float64(1.0) / float64(count)
-		}
-	} else {
-		if !p.HasQuota(rn) && p.Weighted(rn) {
-			ratio = float64(p.GetPoolWeight()[rn]) / float64(totalWeight)
-		}
-	}
-	return ratio
-}
-
-func (cache *schedulerCache) weightedPoolsSize(rn v1.ResourceName) int64 {
-	count := int64(0)
-	for _, pool := range cache.pools {
-		if !pool.HasQuota(rn) {
-			count++
-		}
-	}
-	return count
-}
-
-func (cache *schedulerCache) deserveWeightedPools(remain *schedulerinfo.Resource) {
-	totalWeights := cache.calculateTotalWeights(remain.ResourceNames())
-	for _, p := range cache.pools {
-		//if p.IsDefaultPool() {
-		//	continue
-		//}
-		for rn, tw := range totalWeights {
-			if !p.HasQuota(rn) && p.Weighted(rn) {
-				ratio := cache.calculateRatio(p, rn, tw)
-				p.SetAllocatableResource(rn, int64(float64(remain.GetValue(rn))*ratio))
-			}
-
-		}
-	}
-}
-
-func (cache *schedulerCache) deserveQuotaPools(remain *schedulerinfo.Resource) {
-	// Compute all quotas and clear all deserved
-	totalQuota := cache.calculateTotalQuota()
-	for _, n := range totalQuota.ResourceNames() {
-		totalResQuotaV := totalQuota.GetValue(n)
-		remainResV := remain.GetValue(n)
-		if totalResQuotaV > remainResV {
-			// quota over
-			// find max quota of the resource
-			higherQuota := func(pool1, pool2 interface{}) bool {
-				p1 := pool1.(*v1alpha1.Pool)
-				p2 := pool2.(*v1alpha1.Pool)
-				if util.GetPoolResourceQuota(p1, n) == util.GetPoolResourceQuota(p2, n) {
-					return p1.CreationTimestamp.Before(&p2.CreationTimestamp)
-				}
-				return util.GetPoolResourceQuota(p1, n) > util.GetPoolResourceQuota(p2, n)
-			}
-			poolList := util.SortableList{CompFunc: higherQuota}
-			poolList.Items = append(poolList.Items, cache.getPools()...)
-			poolList.Sort()
-
-			overQuotaV := totalResQuotaV - remainResV
-			for _, p := range poolList.Items {
-				pool := p.(*v1alpha1.Pool)
-				if cache.pools[pool.Name].HasQuota(n) {
-					quotaV := cache.pools[pool.Name].GetQuotaValue(n)
-					if overQuotaV > 0 {
-						if quotaV > overQuotaV {
-							delta := quotaV - overQuotaV
-							cache.pools[pool.Name].SetAllocatableResource(n, delta)
-
-							overQuotaV = 0
-						} else {
-							cache.pools[pool.Name].SetAllocatableResource(n, 0)
-							overQuotaV -= quotaV
-						}
-					} else {
-						cache.pools[pool.Name].SetAllocatableResource(n, quotaV)
-					}
-				}
-			}
-			remain.SetValue(n, 0)
-		} else {
-			// set all quota resources
-			for _, p := range cache.pools {
-				if p.HasQuota(n) {
-					quotaV := p.GetQuotaValue(n)
-					p.SetAllocatableResource(n, quotaV)
-				}
-			}
-			remain.SetValue(n, remainResV-totalResQuotaV)
-		}
-	}
 }
 
 func (cache *schedulerCache) nodes() map[string]*schedulerinfo.NodeInfoListItem {

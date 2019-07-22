@@ -739,22 +739,22 @@ func (sched *Scheduler) PrintPools() {
 			poolName = "Default"
 		}
 		log += fmt.Sprintf(detail,
-			"", fmt.Sprintf("cpu(%d)", p.GetPoolWeight()[v1.ResourceCPU]), capacity.MilliCPU,
+			"", "cpu", capacity.MilliCPU,
 			allocatable.MilliCPU, used.MilliCPU,
 			shared.MilliCPU, pendingRes.MilliCPU, totalRes.MilliCPU,
 
-			"", fmt.Sprintf("gpu(%d)", p.GetPoolWeight()[info.ResourceGPU]),
+			"", "gpu",
 			capacity.ScalarResources[info.ResourceGPU], allocatable.ScalarResources[info.ResourceGPU],
 			used.ScalarResources[info.ResourceGPU], shared.ScalarResources[info.ResourceGPU],
 			pendingRes.ScalarResources[info.ResourceGPU],
 			totalRes.ScalarResources[info.ResourceGPU],
 
-			poolName, fmt.Sprintf("mem(%d)", p.GetPoolWeight()[v1.ResourceMemory]), capacity.Memory,
+			poolName, "mem", capacity.Memory,
 			allocatable.Memory, used.Memory, shared.Memory,
 			pendingRes.Memory, totalRes.Memory,
 
 			fmt.Sprintf("(p=%v,b=%v,s=%v)", disablePreemption, disableBorrowing, disableSharing),
-			fmt.Sprintf("storage(%d)", p.GetPoolWeight()[v1.ResourceEphemeralStorage]),
+			"storage",
 			capacity.EphemeralStorage, allocatable.EphemeralStorage,
 			used.EphemeralStorage, shared.EphemeralStorage,
 			pendingRes.EphemeralStorage, totalRes.EphemeralStorage,
@@ -762,7 +762,7 @@ func (sched *Scheduler) PrintPools() {
 			"", "nodes" /*cache.pools[p.Name()].NumNodes()*/, p.NumNodes(),
 			cache.NodeTree(p.Name()).NumNodes(), "-", "-", "-", cache.NumNodes(),
 
-			"", fmt.Sprintf("pods(%d)", p.GetPoolWeight()[v1.ResourcePods]),
+			"", "pods",
 			capacity.AllowedPodNumber, allocatable.AllowedPodNumber,
 			used.AllowedPodNumber, shared.AllowedPodNumber,
 			pendingRes.AllowedPodNumber, totalRes.AllowedPodNumber,

@@ -1,7 +1,6 @@
 package v1alpha1
 
 import (
-	apiv1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,24 +29,6 @@ type PoolSpec struct {
 	// NodeSelector match node label
 	// +optional
 	NodeSelector *metav1.LabelSelector `json:"nodeSelector,omitempty"`
-	// supportResources match nodes have supported resources
-	// +optional
-	SupportResources []v1.ResourceName `json:"supportResources,omitempty"`
-
-	// Weight defines the weight of resources size in pool
-	// +optional
-	Weight map[v1.ResourceName]int32 `json:"weight,omitempty"`
-
-	// Quota defines the quota of pool divide by weight/labels/manual
-	// +optional
-	Quota v1.ResourceList `json:"quota,omitempty"`
-
-	// Scores is scheduler scoring policy
-	// +optional
-	Scores []apiv1.PriorityPolicy `json:"priorities,omitempty"`
-
-	// Priority is the pool's priority determined scheduling order when borrowing
-	Priority int64 `json:"priority,omitempty"`
 
 	// DisablePreemption flag whether task can preempt resources in the same pool ,
 	// if false, task in pool can preempt resources from other pools
