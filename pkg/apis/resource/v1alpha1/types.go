@@ -1,9 +1,9 @@
 package v1alpha1
 
 import (
+	apiv1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
 // +genclient
