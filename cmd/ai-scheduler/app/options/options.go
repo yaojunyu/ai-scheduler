@@ -313,16 +313,16 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, nil, err
 	}
 
+	poolClient, err := asclientset.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
 	kubeConfig.AcceptContentTypes = config.AcceptContentTypes
 	kubeConfig.ContentType = config.ContentType
 	kubeConfig.QPS = config.QPS
 	//TODO make config struct use int instead of int32?
 	kubeConfig.Burst = int(config.Burst)
-
-	asclient, err := asclientset.NewForConfig(restclient.AddUserAgent(kubeConfig, "ai-scheduler"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
 
 	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeConfig, "ai-scheduler"))
 	if err != nil {
@@ -342,5 +342,5 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, nil, err
 	}
 
-	return client, asclient, leaderElectionClient, eventClient.CoreV1(), nil
+	return client, poolClient, leaderElectionClient, eventClient.CoreV1(), nil
 }
