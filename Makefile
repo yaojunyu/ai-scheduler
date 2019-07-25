@@ -1,7 +1,7 @@
 BIN_DIR=_output/bin
-MAJOR_VER=1
-MINOR_VER=0
-RELEASE_VER=v1.0.0
+MAJOR_VER=0
+MINOR_VER=3
+RELEASE_VER=v0.3.3
 REPO_PATH=gitlab.aibee.cn/platform/ai-scheduler
 GitTreeState="clean"
 GitSHA=`git rev-parse HEAD`

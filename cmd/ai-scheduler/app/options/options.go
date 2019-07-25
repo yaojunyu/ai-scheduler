@@ -313,7 +313,7 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, nil, err
 	}
 
-	asclient, err := asclientset.NewForConfig(restclient.AddUserAgent(kubeConfig, "ai-scheduler"))
+	poolClient, err := asclientset.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -342,5 +342,5 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, nil, err
 	}
 
-	return client, asclient, leaderElectionClient, eventClient.CoreV1(), nil
+	return client, poolClient, leaderElectionClient, eventClient.CoreV1(), nil
 }
