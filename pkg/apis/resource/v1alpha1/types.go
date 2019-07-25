@@ -58,17 +58,46 @@ type PoolSpec struct {
 
 // PoolStatus
 type PoolStatus struct {
+	// Capacity all resources of pool nodes capacity sum
+	// +optional
+	Capacity v1.ResourceList `json:"capacity,omitempty"`
+
 	// Allocatable all quota of pool divided
+	// +optional
+	Allocatable v1.ResourceList `json:"allocatable,omitempty"`
+
+	// Requested  is the current observed total usage of the resource by tasks in the Pool
+	// Requested = (Deserved + System + Shared)
+	// +optional
+	Requested v1.ResourceList `json:"requested,omitempty"`
+
+	// Deserved is the resource used by self pool task
 	// +optional
 	Deserved v1.ResourceList `json:"deserved,omitempty"`
 
-	// Used  is the current observed total usage of the resource by tasks in the Pool
+	// System is the resource used by scheduled by not ai-scheduler, i.e.calico,
 	// +optional
-	Used v1.ResourceList `json:"used,omitempty"`
+	System v1.ResourceList `json:"system,omitempty"`
+
+	// shared is the resources that shared to tasks in others Pool
+	// +optional
+	Shared v1.ResourceList `json:"shared,omitempty"`
 
 	// Borrowed is the resources that task in self Pool borrows from other Pool
-	Shared v1.ResourceList `json:"borrowed,omitempty"`
+	// +optional
+	Borrowed v1.ResourceList `json:"borrowed,omitempty"`
+
+	// Free = (Allocatable - allocated)
+	Free v1.ResourceList `json:"free,omitempty"`
+
+	// Phase
+	PoolQueuePhase PoolQueuePhase
 }
+
+type PoolQueuePhase string
+const (
+	PoolPending PoolQueuePhase = "Pending"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
