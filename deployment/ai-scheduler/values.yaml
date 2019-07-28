@@ -28,6 +28,6 @@ retryPeriod: "2s"
 algorithmSource:
   provider: "DefaultProvider"
 clientConnection:
-  burst: 1000
-  qps: 500
+  burst: 2000
+  qps: 1000
 
