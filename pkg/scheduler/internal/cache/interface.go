@@ -19,6 +19,7 @@ package cache
 import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -145,7 +146,7 @@ type Cache interface {
 	TotalAllocatableResource() *schedulerinfo.Resource
 
 	// BorrowPool get pool to borrow
-	BorrowPool(fromPoolName string, pod *v1.Pod) string
+	BorrowPool(fromPoolName string, pod *v1.Pod, predicateFuncs map[string]predicates.FitPredicate) string
 
 	// Metrics set all pools cache metrics
 	Metrics()

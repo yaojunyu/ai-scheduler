@@ -483,7 +483,7 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 			return cache.WaitForCacheSync(c.StopEverything, c.scheduledPodsHasSynced)
 		},
 		NextPod:              internalqueue.MakeNextPodFunc(c.poolQueue, c.schedulerCache),
-		Error:                MakeDefaultErrorFunc(c.client, podBackoff, c.poolQueue, c.schedulerCache, c.StopEverything),
+		Error:                MakeDefaultErrorFunc(c.client, podBackoff, c.poolQueue, c.schedulerCache, predicateFuncs, c.StopEverything),
 		StopEverything:       c.StopEverything,
 		VolumeBinder:         c.volumeBinder,
 		PoolQueue:            c.poolQueue,
@@ -653,7 +653,8 @@ func NewPodInformer(client clientset.Interface, resyncPeriod time.Duration) core
 }
 
 // MakeDefaultErrorFunc construct a function to handle pod scheduler error
-func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, poolQueue internalqueue.SchedulingPoolQueue, schedulerCache schedulerinternalcache.Cache, stopEverything <-chan struct{}) func(poolName string, pod *v1.Pod, err error, needBorrow bool) {
+func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, poolQueue internalqueue.SchedulingPoolQueue,
+	schedulerCache schedulerinternalcache.Cache, predicateFuncs map[string]predicates.FitPredicate, stopEverything <-chan struct{}) func(poolName string, pod *v1.Pod, err error, needBorrow bool) {
 	return func(poolName string, pod *v1.Pod, err error, needBorrow bool) {
 		if err == core.ErrNoNodesAvailable {
 			klog.V(4).Infof("Unable to schedule %v/%v: no nodes are registered to the cluster; waiting", pod.Namespace, pod.Name)
@@ -711,7 +712,7 @@ func MakeDefaultErrorFunc(client clientset.Interface, backoff *util.PodBackoff, 
 						borrowPoolName := poolName
 						if needBorrow {
 							selfPoolName := poolQueue.GetPoolQueueNameIfNotPresent(pod)
-							borrowPoolName = schedulerCache.BorrowPool(poolName, pod)
+							borrowPoolName = schedulerCache.BorrowPool(poolName, pod, predicateFuncs)
 							if borrowPoolName != selfPoolName {
 								// check borrow pool whether has self pending pods, if so add pod to self pool
 								if poolQueue.HasSelfPoolPendingPods(borrowPoolName) {
