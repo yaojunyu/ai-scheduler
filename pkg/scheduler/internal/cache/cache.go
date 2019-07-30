@@ -951,7 +951,6 @@ func predicateCheck(pod *v1.Pod, nodeInfo *schedulerinfo.NodeInfo, predicateFunc
 			reasons []predicates.PredicateFailureReason
 			err     error
 		)
-		klog.V(4).Infof("predicates key: %v", predicateKey)
 		if predicate, exist := predicateFuncs[predicateKey]; exist {
 			fit, reasons, err = predicate(pod, nil, nodeInfo)
 			if err != nil {
