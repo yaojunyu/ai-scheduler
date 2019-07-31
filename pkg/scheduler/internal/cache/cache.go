@@ -893,8 +893,8 @@ func (cache *schedulerCache) GetPoolContainsNode(nodeName string) *schedulerinfo
 
 func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod, predicateFuncs map[string]predicates.FitPredicate) string {
 	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	selfPoolInfo := cache.matchPoolForPod(pod)
-	cache.mu.RUnlock()
 	selfPoolName := selfPoolInfo.Name()
 	if !selfPoolInfo.DisableBorrowing() {
 		higherIdleFunc := func(pool1, pool2 interface{}) bool {
@@ -910,7 +910,6 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod, predic
 			return !p1.Idle().LessOrEqual(p2.Idle())
 		}
 		sharingPools := util.SortableList{CompFunc: higherIdleFunc}
-		cache.mu.RLock()
 		for _, p := range cache.pools {
 			// skip other pools that set disableSharing=true and current fromPool
 			if fromPoolName == p.Name() || !selfPoolInfo.CanBorrowPool(p) {
@@ -918,14 +917,15 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod, predic
 			}
 			sharingPools.Items = append(sharingPools.Items, p)
 		}
-		cache.mu.RUnlock()
 		sharingPools.Sort()
 		for _, p := range sharingPools.Items {
 			pi := p.(*schedulerinfo.PoolInfo)
 			klog.V(4).Infof("Attempt to borrow %q for pod %v/%v@%v in queue %q", pi.Name(), pod.Namespace, pod.Name, selfPoolName, fromPoolName)
 			// predicate for nodes of pool
 			for _, ni := range pi.Nodes() {
-				fit, reasons, err := predicateCheck(pod, ni.Info(), predicateFuncs)
+				cache.mu.RUnlock()
+				fit, reasons, err := predicateCheck(pod, ni.Info().Clone(), predicateFuncs)
+				cache.mu.RLock()
 				if !fit {
 					nodeName := "NOT FOUND"
 					if ni.Info().Node() != nil {
@@ -938,6 +938,7 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod, predic
 				return pi.Name()
 			}
 		}
+
 	}
 	klog.V(4).Infof("pool %q disabled borrowing: %v, or Not any pools fit pod %v/%v", selfPoolName, selfPoolInfo.DisableBorrowing(), pod.Namespace, pod.Name)
 	return selfPoolName
