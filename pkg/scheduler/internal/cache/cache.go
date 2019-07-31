@@ -488,8 +488,8 @@ func (cache *schedulerCache) RemovePool(pool *v1alpha1.Pool) error {
 }
 
 func (cache *schedulerCache) GetPool(poolName string) (*schedulerinfo.PoolInfo, error) {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	pool, ok := cache.pools[poolName]
 	if !ok {
 		return nil, fmt.Errorf("pool %v does not exist in scheduler cache", poolName)
@@ -498,8 +498,8 @@ func (cache *schedulerCache) GetPool(poolName string) (*schedulerinfo.PoolInfo, 
 }
 
 func (cache *schedulerCache) Pools() map[string]*schedulerinfo.PoolInfo {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	return cache.pools
 }
 
@@ -863,26 +863,26 @@ func (cache *schedulerCache) getPools() []interface{} {
 }
 
 func (cache *schedulerCache) NumPools() int {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	return len(cache.pools)
 }
 
 func (cache *schedulerCache) NumNodes() int {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	return len(cache.nodes())
 }
 
 func (cache *schedulerCache) TotalAllocatableResource() *schedulerinfo.Resource {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	return cache.calculateTotalResource()
 }
 
 func (cache *schedulerCache) GetPoolContainsNode(nodeName string) *schedulerinfo.PoolInfo {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	for _, p := range cache.pools {
 		if _, ok := p.ContainsNode(nodeName); ok {
 			return p
@@ -891,9 +891,9 @@ func (cache *schedulerCache) GetPoolContainsNode(nodeName string) *schedulerinfo
 	return nil
 }
 
-func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod, predicateFuncs map[string]predicates.FitPredicate) string {
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 	selfPoolInfo := cache.matchPoolForPod(pod)
 	selfPoolName := selfPoolInfo.Name()
 	if !selfPoolInfo.DisableBorrowing() {
@@ -922,18 +922,49 @@ func (cache *schedulerCache) BorrowPool(fromPoolName string, pod *v1.Pod) string
 			pi := p.(*schedulerinfo.PoolInfo)
 			klog.V(4).Infof("Attempt to borrow %q for pod %v/%v@%v in queue %q", pi.Name(), pod.Namespace, pod.Name, selfPoolName, fromPoolName)
 			// predicate for nodes of pool
-			for _, ni := range pi.Nodes() { // FIXME
-				fit, _, _ := predicates.PodFitsResources(pod, nil, ni.Info())
+			for _, ni := range pi.Nodes() {
+				cache.mu.RUnlock()
+				fit, reasons, err := predicateCheck(pod, ni.Info().Clone(), predicateFuncs)
+				cache.mu.RLock()
 				if !fit {
+					nodeName := "NOT FOUND"
+					if ni.Info().Node() != nil {
+						nodeName = ni.Info().Node().Name
+					}
+					klog.V(4).Infof("Node %v in %v predicates fit failed: %v:%v", nodeName, pi.Name(), reasons, err)
 					continue
 				}
-				klog.V(4).Infof("Got node %v/%v pod fit resources", pi.Name(), ni.Info().Node().Name)
+				klog.V(4).Infof("Node %v in %v pool predicates succeed.", ni.Info().Node().Name, pi.Name())
 				return pi.Name()
 			}
 		}
+
 	}
 	klog.V(4).Infof("pool %q disabled borrowing: %v, or Not any pools fit pod %v/%v", selfPoolName, selfPoolInfo.DisableBorrowing(), pod.Namespace, pod.Name)
 	return selfPoolName
+}
+
+func predicateCheck(pod *v1.Pod, nodeInfo *schedulerinfo.NodeInfo, predicateFuncs map[string]predicates.FitPredicate) (bool,[]predicates.PredicateFailureReason, error) {
+	var failedPredicates []predicates.PredicateFailureReason
+	for _, predicateKey := range predicates.Ordering() {
+		var (
+			fit     bool
+			reasons []predicates.PredicateFailureReason
+			err     error
+		)
+		if predicate, exist := predicateFuncs[predicateKey]; exist {
+			fit, reasons, err = predicate(pod, nil, nodeInfo)
+			if err != nil {
+				return false, []predicates.PredicateFailureReason{}, err
+			}
+			if !fit {
+				// eCache is available and valid, and predicates result is unfit, record the fail reasons
+				failedPredicates = append(failedPredicates, reasons...)
+				break
+			}
+		}
+	}
+	return len(failedPredicates) == 0, failedPredicates, nil
 }
 
 func (cache *schedulerCache) Metrics() {

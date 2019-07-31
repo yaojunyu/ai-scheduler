@@ -19,6 +19,7 @@ package fake
 import (
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -118,6 +119,6 @@ func (c *Cache) NodeInfoSnapshot(poolName string) *info.NodeInfoSnapshot { retur
 
 func (c *Cache) GetPoolContainsNode(nodeName string) *info.PoolInfo { return nil }
 
-func (c *Cache) BorrowPool(fromPoolName string, pod *v1.Pod) string { return "" }
+func (c *Cache) BorrowPool(fromPoolName string, pod *v1.Pod, predicateFuncs map[string]predicates.FitPredicate) string { return "" }
 
 func (c *Cache) Metrics() { return }
