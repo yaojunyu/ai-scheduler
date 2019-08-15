@@ -45,7 +45,7 @@ spec:
             description: "Ai-Scheduler Binding Too Long!"
             summary: 'Ai-Scheduler Binding Too Long! Ai-Scheduler binding latency : {{ $value }}s'
         - alert: AiSchedulerContainerRestarted
-          expr: delta(kube_pod_container_status_restarts_total{container="ai-scheduler"}[10m]) > 10
+          expr: delta(kube_pod_container_status_restarts_total{container="ai-scheduler"}[10m]) > 0
           for: 1s
           labels:
             component: ai-scheduler

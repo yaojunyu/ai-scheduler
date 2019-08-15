@@ -27,6 +27,24 @@ spec:
         tier: control-plane
         app: {{ .Chart.Name }}
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/role
+                    operator: In
+                    values:
+                      - master
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ .Chart.Name }}
+              topologyKey: "kubernetes.io/hostname"
       containers:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
@@ -69,8 +87,6 @@ spec:
           operator: "Equal"
           value: ""
           effect: "NoSchedule"
-      nodeSelector:
-        kubernetes.io/role: master
       priorityClassName: system-cluster-critical
       restartPolicy: {{ .Values.restartPolicy }}
       schedulerName: default-scheduler
