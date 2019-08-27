@@ -211,7 +211,7 @@ Ai-Scheduler在资源池资源不足时，优先尝试在本池中进行抢占�
 - **租借逻辑**：
   - pod所在的pool是否disableBorrowing
     - 如果disabledBorrowing，pod返回自己所在的pool
-    - 如果enableBorrowing，pod优先选择自己的pool再次选择资源空闲最大的pool（除去当前pool），进入对应poolQueue的activeQ，进如其他pool的调度循环
+    - 如果enableBorrowing，pod优先选择自己的pool再次选择资源空闲最大的pool（除去当前pool），进入对应poolQueue的activeQ，进入其他pool的调度循环
 
 > 抢占比租借优先，保证pool对本池任务的资源分配。当pool资源不够时，首先对租借的pod进行驱逐，如果驱逐后仍然不能满足再进行租借。
 >
@@ -223,7 +223,7 @@ Ai-Scheduler在资源池资源不足时，优先尝试在本池中进行抢占�
 
 ## 编译部署
 
-编译脚本建源码Makefile，编译、构建上传镜像使用如下命令：
+编译脚本见源码Makefile，编译、构建上传镜像使用如下命令：
 
 ```shell
 $ make images
