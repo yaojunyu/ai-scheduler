@@ -19,6 +19,7 @@ package scheduler
 import (
 	"errors"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
 	"io/ioutil"
@@ -615,6 +616,11 @@ func (sched *Scheduler) scheduleOne(poolName string) error {
 		} else {
 			klog.V(2).Infof("pod %v/%v is bound successfully on node %v, %d nodes evaluated, %d nodes were found feasible", assumedPod.Namespace, assumedPod.Name, scheduleResult.SuggestedHost, scheduleResult.EvaluatedNodes, scheduleResult.FeasibleNodes)
 			metrics.PodScheduleSuccesses.Inc()
+			pn := poolName
+			if len(pn) == 0 {
+				pn = "default"
+			}
+			metrics.PoolQueuePods.With(prometheus.Labels{"pool": pn, "pod_name": pod.Name, "schedule_status": "scheduled"}).Set(float64(1.0))
 		}
 	}()
 	return nil

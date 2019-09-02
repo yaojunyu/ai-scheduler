@@ -45,7 +45,7 @@ spec:
             description: "Ai-Scheduler Binding Too Long!"
             summary: 'Ai-Scheduler Binding Too Long! Ai-Scheduler binding latency : {{ $value }}s'
         - alert: AiSchedulerContainerRestarted
-          expr: delta(kube_pod_container_status_restarts_total{container="ai-scheduler"}[10m]) > 10
+          expr: delta(kube_pod_container_status_restarts_total{container="ai-scheduler"}[10m]) > 0
           for: 1s
           labels:
             component: ai-scheduler
@@ -70,6 +70,9 @@ spec:
         - expr: scheduler_pool_nodes * on(instance) group_left
             avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
           record: ai:scheduler_pool_nodes:master
+        - expr: scheduler_pool_queue_pods * on(instance) group_left
+            avg(leader_election_master_status{name="ai-scheduler", job="ai-scheduler-metrics"} == 1) by (instance)
+          record: ai:scheduler_pool_queue_pods:master
 
         - expr: sum(ai:scheduler_pool_nodes:master * on(node) group_left
             count(label_join(nvidia_gpu_duty_cycle>0, "node", "", "node_name")) by (node)) by (pool)
@@ -248,6 +251,8 @@ spec:
           record: ai:task:container_spec_memory_limit_bytes:sum_over_time10m
         - expr: sum(ai:task:container_spec_memory_limit_bytes:sum_over_time10m) by (task)
           record: ai:task:container_spec_memory_limit_bytes:sum_over_time10m:sum
+        - expr: label_replace(ai:scheduler_pool_queue_pods:master{pod_name=~"(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*"}, "task", "$1", "pod_name", "(([^-]+-){4,6}(?:20[0-9]{2})?[01][0-9][0-3][0-9])-.*")
+          record: ai:task:scheduler_pool_queue_pods
 
         - expr: ai:task:container_cpu_usage_seconds_total:rate:sum / (ai:task:container_spec_cpu_quota:sum / 100000)
           record: ai:task:cpu_utilization
