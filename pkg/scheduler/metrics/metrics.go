@@ -242,6 +242,12 @@ var (
 			Name:      "pool_queue_details",
 			Help:      "Pool Queue details",
 		}, []string{"pool", "type"})
+	PoolQueuePods = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Subsystem: SchedulerSubsystem,
+			Name:      "pool_queue_pods",
+			Help:      "Pool queue pods status",
+		}, []string{"pool", "pod_name", "schedule_status"})
 
 	metricsList = []prometheus.Collector{
 		scheduleAttempts,
@@ -265,6 +271,7 @@ var (
 		PoolFeatures,
 		PoolNodes,
 		PoolQueueDetails,
+		PoolQueuePods,
 	}
 )
 

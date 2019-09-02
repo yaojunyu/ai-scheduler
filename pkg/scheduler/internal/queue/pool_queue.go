@@ -388,7 +388,8 @@ func (pq *PoolQueue) Metrics() {
 		if poolName == info.DefaultPoolName {
 			poolName = "default"
 		}
-		pendingRes := info.CalculateSumPodsRequestResource(queue.PendingPods())
+		pendingPods := queue.PendingPods()
+		pendingRes := info.CalculateSumPodsRequestResource(pendingPods)
 		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceCpu, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.MilliCPU))
 		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceGpu, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.ScalarResources[info.ResourceGPU]))
 		metrics.PoolResourceDetails.With(prometheus.Labels{"pool": poolName, "resource": metrics.PoolResourceMem, "type": metrics.PoolDetailTypePending}).Set(float64(pendingRes.Memory))
@@ -398,5 +399,9 @@ func (pq *PoolQueue) Metrics() {
 		metrics.PoolQueueDetails.With(prometheus.Labels{"pool": poolName, "type": metrics.PoolQueueTypeActive}).Set(float64(queue.NumActivePods()))
 		metrics.PoolQueueDetails.With(prometheus.Labels{"pool": poolName, "type": metrics.PoolQueueTypeUnschedule}).Set(float64(queue.NumUnschedulablePods()))
 		metrics.PoolQueueDetails.With(prometheus.Labels{"pool": poolName, "type": metrics.PoolQueueTypeBackoff}).Set(float64(queue.NumBackoffPods()))
+
+		for _, pod := range pendingPods {
+			metrics.PoolQueuePods.With(prometheus.Labels{"pool": poolName, "pod_name": pod.Name, "schedule_status": "pending"}).Set(float64(1.0))
+		}
 	}
 }
