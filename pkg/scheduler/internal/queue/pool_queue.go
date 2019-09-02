@@ -384,6 +384,7 @@ func (pq *PoolQueue) Metrics() {
 	pq.lock.RLock()
 	defer pq.lock.RUnlock()
 	metrics.PoolQueueDetails.Reset()
+	metrics.PoolQueuePods.Reset()
 	for poolName, queue := range pq.queues {
 		if poolName == info.DefaultPoolName {
 			poolName = "default"
