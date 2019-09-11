@@ -1,7 +1,9 @@
+SHELL := /bin/bash
+
 BIN_DIR=_output/bin
-MAJOR_VER=1
-MINOR_VER=0
-RELEASE_VER=v1.0.0
+RELEASE_VER=$(shell git describe --tags --abbrev=7 HEAD --always)
+MAJOR_VER=$(shell echo $RELEASE_VER | cut -f 1 -d '-' | cut -f 1 -d '.' | cut -f 2 -d 'v')
+MINOR_VER=$(shell echo $RELEASE_VER | cut -f 1 -d '-' | cut -f 2 -d '.')
 REPO_PATH=gitlab.aibee.cn/platform/ai-scheduler
 GitTreeState="clean"
 GitSHA=`git rev-parse HEAD`

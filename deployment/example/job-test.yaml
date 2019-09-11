@@ -3,14 +3,14 @@ kind: Job
 metadata:
   name: test-job1
 spec:
-  completions: 10000
-  parallelism: 10000
+  completions: 100
+  parallelism: 100
   activeDeadlineSeconds: 10000
   template:
     metadata:
       name: test-job1
       annotations:
-        resource.aibee.cn/pool: test-pool
+        resource.aibee.cn/pool: tests
     spec:
       schedulerName: ai-scheduler
       containers:
@@ -20,10 +20,10 @@ spec:
           args: ["-Mbignum=bpi", "-wle", "print bpi(2000)"]
           resources:
             limits:
-              cpu: 100m
+              cpu: 8
               memory: 100M
             requests:
-              cpu: 100m
+              cpu: 8
               memory: 100M
       restartPolicy: Never
   backoffLimit: 1

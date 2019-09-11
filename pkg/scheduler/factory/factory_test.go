@@ -259,7 +259,7 @@ func TestDefaultErrorFunc(t *testing.T) {
 	poolQueue.SetQueue("", queue)
 	schedulerCache := schedulerinternalcache.New(30*time.Second, stopCh)
 	podBackoff := util.CreatePodBackoff(1*time.Millisecond, 1*time.Second)
-	errFunc := MakeDefaultErrorFunc(client, podBackoff, poolQueue, schedulerCache, stopCh)
+	errFunc := MakeDefaultErrorFunc(client, podBackoff, poolQueue, schedulerCache, nil, stopCh)
 
 	errFunc("", testPod, nil, false)
 

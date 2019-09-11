@@ -9,10 +9,10 @@ restartPolicy: Always
 
 resources:
   limits:
-    cpu: 4
+    cpu: 8
     memory: 8Gi
   requests:
-    cpu: 4
+    cpu: 8
     memory: 8Gi
 
 securePort: 20888

@@ -2666,7 +2666,7 @@ func TestSchedulerCacheBorrowPool(t *testing.T) {
 			for _, pool := range test.pools {
 				cache.AddPool(pool)
 			}
-			gotPool := cache.BorrowPool(test.poolName, &test.pod)
+			gotPool := cache.BorrowPool(test.poolName, &test.pod, nil)
 			if gotPool != test.expected {
 				t.Errorf("unexcepted borrow pool, excepted: %q, got: %q", test.expected, gotPool)
 			}
