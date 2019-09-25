@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )

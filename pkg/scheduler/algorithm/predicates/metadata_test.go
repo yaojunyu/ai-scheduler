@@ -22,8 +22,8 @@ import (
 	"sort"
 	"testing"
 
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
-	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulertesting "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

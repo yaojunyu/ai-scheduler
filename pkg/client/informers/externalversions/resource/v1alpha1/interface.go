@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	internalinterfaces "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
+	internalinterfaces "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.

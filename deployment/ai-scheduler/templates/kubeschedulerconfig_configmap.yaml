@@ -4,12 +4,26 @@ metadata:
   name: {{ .Chart.Name }}-config
   namespace: kube-system
 data:
+  kubeconfig: |
+{{- if eq .Values.cluster "bj"}}
+{{ toYaml .Values.bjConfig | indent 4 }}
+{{- end}}
+{{- if eq .Values.cluster "gz"}}
+{{ toYaml .Values.gzConfig | indent 4 }}
+{{- end}}
+{{- if eq .Values.cluster "sh"}}
+{{ toYaml .Values.shConfig | indent 4 }}
+{{- end}}
+{{- if eq .Values.cluster "qa"}}
+{{ toYaml .Values.qaConfig | indent 4 }}
+{{- end}}
   kubeschedulerconfig.yaml: |
     apiVersion: kubescheduler.config.k8s.io/v1alpha1
     kind: KubeSchedulerConfiguration
     algorithmSource:
       provider: {{ .Values.algorithmSource.provider }}
     clientConnection:
+      kubeconfig: "/etc/kubernetes/kubeconfig"
       burst: {{ .Values.clientConnection.burst }}
       qps: {{ .Values.clientConnection.qps }}
     leaderElection:

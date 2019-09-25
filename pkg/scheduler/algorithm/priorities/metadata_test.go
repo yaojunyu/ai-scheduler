@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
-	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
+	priorityutil "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulertesting "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

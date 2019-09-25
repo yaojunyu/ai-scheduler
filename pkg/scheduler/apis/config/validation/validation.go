@@ -17,7 +17,7 @@ limitations under the License.
 package validation
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	componentbasevalidation "k8s.io/component-base/config/validation"

@@ -17,7 +17,7 @@ limitations under the License.
 package algorithmprovider
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithmprovider/defaults"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithmprovider/defaults"
 )
 
 // ApplyFeatureGates applies algorithm by feature gates.

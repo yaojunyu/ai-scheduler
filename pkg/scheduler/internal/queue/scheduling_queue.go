@@ -35,10 +35,10 @@ import (
 
 	"k8s.io/klog"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
-	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
-	schedulerinternalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
+	priorityutil "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
+	schedulerinternalcache "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"

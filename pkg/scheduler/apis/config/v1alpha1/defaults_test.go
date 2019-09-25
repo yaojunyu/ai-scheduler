@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	kubeschedulerconfigv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1"
+	kubeschedulerconfigv1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

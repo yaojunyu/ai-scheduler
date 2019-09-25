@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	utilfeaturetesting "k8s.io/apiserver/pkg/util/feature/testing"
 	"k8s.io/kubernetes/pkg/features"

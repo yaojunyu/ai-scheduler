@@ -16,4 +16,4 @@ limitations under the License.
 
 // Package algorithm contains a generic Scheduler interface and several
 // implementations.
-package algorithm // import "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+package algorithm // import "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"

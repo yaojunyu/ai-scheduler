@@ -18,13 +18,13 @@ package scheduler
 
 import (
 	"fmt"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
 	"k8s.io/klog"
 	"reflect"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
-	resourceinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
-	scheduercache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
+	"code.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
+	resourceinformers "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
+	scheduercache "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"

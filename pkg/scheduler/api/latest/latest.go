@@ -17,13 +17,13 @@ limitations under the License.
 package latest
 
 import (
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/versioning"
 	// Init the api v1 package
-	_ "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/v1"
+	_ "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/v1"
 )
 
 // Version is the string that represents the current external default version.

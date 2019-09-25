@@ -22,9 +22,9 @@ import (
 
 	"k8s.io/klog"
 
-	internalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	internalcache "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 )
 

@@ -19,8 +19,8 @@ limitations under the License.
 package resource
 
 import (
-	internalinterfaces "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
+	internalinterfaces "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

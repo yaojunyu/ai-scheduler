@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app"
+	"code.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 

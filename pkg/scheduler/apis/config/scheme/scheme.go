@@ -17,8 +17,8 @@ limitations under the License.
 package scheme
 
 import (
-	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
-	kubeschedulerconfigv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/v1alpha1"
+	kubeschedulerconfig "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	kubeschedulerconfigv1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"

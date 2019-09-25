@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
 	"k8s.io/api/core/v1"
 )
 

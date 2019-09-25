@@ -23,8 +23,8 @@ package v1alpha1
 import (
 	unsafe "unsafe"
 
-	config "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1"
+	config "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	v1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	configv1alpha1 "k8s.io/component-base/config/v1alpha1"

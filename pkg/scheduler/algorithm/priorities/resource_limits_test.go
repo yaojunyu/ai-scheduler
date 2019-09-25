@@ -23,8 +23,8 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 )
 
 func TestResourceLimistPriority(t *testing.T) {

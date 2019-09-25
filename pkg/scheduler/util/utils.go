@@ -17,7 +17,7 @@ limitations under the License.
 package util
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"sort"
 
 	"k8s.io/api/core/v1"

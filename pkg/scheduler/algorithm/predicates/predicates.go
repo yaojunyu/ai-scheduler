@@ -25,12 +25,12 @@ import (
 
 	"k8s.io/klog"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
-	schedutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	priorityutil "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedutil "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

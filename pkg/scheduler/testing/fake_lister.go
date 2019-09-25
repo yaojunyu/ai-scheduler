@@ -19,7 +19,7 @@ package testing
 import (
 	"fmt"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"

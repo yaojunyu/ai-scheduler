@@ -17,8 +17,8 @@ limitations under the License.
 package plugins
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
-	plugins "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/plugins/v1alpha1"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
+	plugins "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/plugins/v1alpha1"
 )
 
 // DefaultPluginSet is the default plugin registrar used by the default scheduler.

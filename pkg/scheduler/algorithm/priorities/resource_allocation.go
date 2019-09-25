@@ -19,9 +19,9 @@ package priorities
 import (
 	"fmt"
 
-	priorityutil "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	priorityutil "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities/util"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog"

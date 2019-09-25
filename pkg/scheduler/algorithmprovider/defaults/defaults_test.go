@@ -19,8 +19,8 @@ package defaults
 import (
 	"testing"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

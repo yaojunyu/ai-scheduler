@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/spf13/pflag"
 
-	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
+	kubeschedulerconfig "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 

@@ -15,10 +15,10 @@ limitations under the License.
 */
 
 // +k8s:deepcopy-gen=package
-// +k8s:conversion-gen=gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config
-// +k8s:conversion-gen-external-types=gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1
+// +k8s:conversion-gen=code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config
+// +k8s:conversion-gen-external-types=code.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1
 // +k8s:defaulter-gen=TypeMeta
-// +k8s:defaulter-gen-input=../../../../../vendor/gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1
+// +k8s:defaulter-gen-input=../../../../../vendor/code.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1
 // +groupName=kubescheduler.config.k8s.io
 
-package v1alpha1 // import "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/v1alpha1"
+package v1alpha1 // import "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/v1alpha1"

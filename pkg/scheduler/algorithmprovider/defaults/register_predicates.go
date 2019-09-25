@@ -17,8 +17,8 @@ limitations under the License.
 package defaults
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
 )
 
 func init() {

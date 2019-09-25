@@ -17,10 +17,10 @@ limitations under the License.
 package defaults
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/core"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/core"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
 )
 
 func init() {

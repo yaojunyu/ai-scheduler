@@ -19,7 +19,7 @@ limitations under the License.
 package versioned
 
 import (
-	resourcev1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1"
+	resourcev1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

@@ -17,10 +17,10 @@ limitations under the License.
 package fake
 
 import (
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	"code.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )

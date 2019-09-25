@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
-	internalinterfaces "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
-	resource "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource"
+	versioned "code.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
+	internalinterfaces "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
+	resource "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

@@ -22,9 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
 	"k8s.io/kubernetes/pkg/features"
 )
 

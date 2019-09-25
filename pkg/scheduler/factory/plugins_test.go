@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 )
 
 func TestAlgorithmNameValidation(t *testing.T) {

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	"k8s.io/api/core/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"

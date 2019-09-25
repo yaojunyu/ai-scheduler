@@ -17,9 +17,9 @@ limitations under the License.
 package config
 
 import (
-	asclientset "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
-	asinformers "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions"
-	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	asclientset "code.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
+	asinformers "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions"
+	kubeschedulerconfig "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
 	apiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"

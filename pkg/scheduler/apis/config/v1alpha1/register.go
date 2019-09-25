@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	kubeschedulerconfigv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1"
+	kubeschedulerconfigv1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/config/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 

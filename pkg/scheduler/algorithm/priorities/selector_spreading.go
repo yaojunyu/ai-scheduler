@@ -19,9 +19,9 @@ package priorities
 import (
 	"fmt"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilnode "k8s.io/kubernetes/pkg/util/node"

@@ -3,11 +3,11 @@ package queue
 import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/metrics"
 	"sync"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 )

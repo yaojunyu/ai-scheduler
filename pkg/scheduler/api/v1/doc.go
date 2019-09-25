@@ -17,4 +17,4 @@ limitations under the License.
 // +k8s:deepcopy-gen=package
 
 // Package v1 contains scheduler API objects.
-package v1 // import "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/v1"
+package v1 // import "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api/v1"

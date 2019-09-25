@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 )
 
 func TestValidatePolicy(t *testing.T) {

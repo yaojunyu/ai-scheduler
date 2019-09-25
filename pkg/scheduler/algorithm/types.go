@@ -17,7 +17,7 @@ limitations under the License.
 package algorithm
 
 import (
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"

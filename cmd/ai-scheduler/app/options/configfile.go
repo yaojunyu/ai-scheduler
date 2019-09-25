@@ -21,9 +21,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
-	kubeschedulerscheme "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/scheme"
-	kubeschedulerconfigv1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/v1alpha1"
+	kubeschedulerconfig "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	kubeschedulerscheme "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/scheme"
+	kubeschedulerconfigv1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 )

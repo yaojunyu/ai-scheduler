@@ -20,8 +20,8 @@ import (
 	"os"
 	"os/signal"
 
-	internalcache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
-	internalqueue "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
+	internalcache "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache"
+	internalqueue "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/queue"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 

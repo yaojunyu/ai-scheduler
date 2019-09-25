@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"k8s.io/klog"
 
-	plugins "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/plugins/v1alpha1"
+	plugins "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/plugins/v1alpha1"
 	"k8s.io/api/core/v1"
 )
 

@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/pflag"
 
-	schedulerappconfig "gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/config"
-	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	schedulerappconfig "code.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/config"
+	kubeschedulerconfig "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
 )
 

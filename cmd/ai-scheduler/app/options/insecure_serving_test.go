@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"testing"
 
-	schedulerappconfig "gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/config"
-	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
+	schedulerappconfig "code.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/config"
+	kubeschedulerconfig "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/apis/config"
 	"k8s.io/apimachinery/pkg/util/rand"
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
 )

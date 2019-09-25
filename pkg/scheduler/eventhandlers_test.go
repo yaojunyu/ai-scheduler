@@ -20,12 +20,12 @@ import (
 	"reflect"
 	"testing"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/factory"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	fakecache "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache/fake"
+	fakecache "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/internal/cache/fake"
 )
 
 func TestSkipPodUpdate(t *testing.T) {

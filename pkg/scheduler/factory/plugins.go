@@ -23,11 +23,11 @@ import (
 	"strings"
 	"sync"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/predicates"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithm/priorities"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/volumebinder"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"k8s.io/klog"

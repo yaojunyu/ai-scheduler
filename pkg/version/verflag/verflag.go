@@ -25,7 +25,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/version"
+	"code.aibee.cn/platform/ai-scheduler/pkg/version"
 )
 
 type versionValue int

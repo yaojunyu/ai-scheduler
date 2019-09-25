@@ -18,4 +18,4 @@ limitations under the License.
 
 // Package version supplies version information collected at build time to
 // kubernetes components.
-package version // import "gitlab.aibee.cn/platform/ai-scheduler/pkg/version"
+package version // import "code.aibee.cn/platform/ai-scheduler/pkg/version"

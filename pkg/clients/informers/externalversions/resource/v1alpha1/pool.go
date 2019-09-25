@@ -21,10 +21,10 @@ package v1alpha1
 import (
 	time "time"
 
-	resourcev1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
-	versioned "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
-	internalinterfaces "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/listers/resource/v1alpha1"
+	resourcev1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/apis/resource/v1alpha1"
+	versioned "code.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
+	internalinterfaces "code.aibee.cn/platform/ai-scheduler/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/client/listers/resource/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

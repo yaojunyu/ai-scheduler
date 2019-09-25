@@ -17,7 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )

@@ -24,9 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	schedulerapi "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
-	schedulerinfo "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
-	schedulertesting "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
+	schedulerapi "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/api"
+	schedulerinfo "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/info"
+	schedulertesting "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/testing"
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

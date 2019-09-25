@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
-	resourcev1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1"
-	fakeresourcev1alpha1 "gitlab.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1/fake"
+	clientset "code.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned"
+	resourcev1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1"
+	fakeresourcev1alpha1 "code.aibee.cn/platform/ai-scheduler/pkg/client/clientset/versioned/typed/resource/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

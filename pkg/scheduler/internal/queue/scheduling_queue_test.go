@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
+	"code.aibee.cn/platform/ai-scheduler/pkg/scheduler/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

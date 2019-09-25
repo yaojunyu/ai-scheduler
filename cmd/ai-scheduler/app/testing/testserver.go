@@ -25,15 +25,15 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app"
-	kubeschedulerconfig "gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/config"
-	"gitlab.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/options"
+	"code.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app"
+	kubeschedulerconfig "code.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/config"
+	"code.aibee.cn/platform/ai-scheduler/cmd/ai-scheduler/app/options"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 
 	// import DefaultProvider
-	_ "gitlab.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithmprovider/defaults"
+	_ "code.aibee.cn/platform/ai-scheduler/pkg/scheduler/algorithmprovider/defaults"
 )
 
 // TearDownFunc is to be called to tear down a test server.
