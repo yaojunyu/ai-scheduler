@@ -17,6 +17,9 @@ data:
 {{- if eq .Values.cluster "qa"}}
 {{ toYaml .Values.qaConfig | indent 4 }}
 {{- end}}
+{{- if eq .Values.cluster "etcd"}}
+{{ toYaml .Values.etcdConfig | indent 4 }}
+{{- end}}
   kubeschedulerconfig.yaml: |
     apiVersion: kubescheduler.config.k8s.io/v1alpha1
     kind: KubeSchedulerConfiguration

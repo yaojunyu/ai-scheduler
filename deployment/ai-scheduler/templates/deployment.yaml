@@ -32,10 +32,15 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: kubernetes.io/role
-                    operator: In
-                    values:
-                      - master
+                - key: kubernetes.io/role
+                  operator: In
+                  values:
+                    - master
+              - matchExpressions:
+                - key: node-role.kubernetes.io/master
+                  operator: In
+                  values:
+                    - ""
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:

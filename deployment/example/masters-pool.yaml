@@ -1,0 +1,11 @@
+apiVersion: resource.aibee.cn/v1alpha1
+kind: Pool
+metadata:
+  name: masters
+spec:
+  disableBorrowing: true
+  disablePreemption: true
+  disableSharing: true
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/role: master
